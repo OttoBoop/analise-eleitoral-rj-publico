@@ -1,0 +1,93 @@
+id,nome,tse,regiao,metropolitana,ibge
+3300100,Angra dos Reis,58017,Costa Verde,False,3300100
+3300159,Aperibé,58181,Noroeste Fluminense,False,3300159
+3300209,Araruama,58033,Baixadas Litorâneas,False,3300209
+3300225,Areal,58220,Centro-Sul Fluminense,False,3300225
+3300233,Armação dos Búzios,58408,Baixadas Litorâneas,False,3300233
+3300258,Arraial do Cabo,59277,Baixadas Litorâneas,False,3300258
+3300407,Barra Mansa,58076,Médio Paraíba,False,3300407
+3300308,Barra do Piraí,58050,Médio Paraíba,False,3300308
+3300456,Belford Roxo,58041,Metropolitana,True,3300456
+3300506,Bom Jardim,58092,Serrana,False,3300506
+3300605,Bom Jesus do Itabapoana,58114,Noroeste Fluminense,False,3300605
+3300704,Cabo Frio,58130,Baixadas Litorâneas,False,3300704
+3300803,Cachoeiras de Macacu,58157,Metropolitana,True,3300803
+3300902,Cambuci,58173,Noroeste Fluminense,False,3300902
+3301009,Campos dos Goytacazes,58190,Norte Fluminense,False,3301009
+3301108,Cantagalo,58211,Serrana,False,3301108
+3300936,Carapebus,58300,Norte Fluminense,False,3300936
+3301157,Cardoso Moreira,58068,Norte Fluminense,False,3301157
+3301207,Carmo,58238,Serrana,False,3301207
+3301306,Casimiro de Abreu,58254,Baixadas Litorâneas,False,3301306
+3300951,Comendador Levy Gasparian,58165,Centro-Sul Fluminense,False,3300951
+3301405,Conceição de Macabu,58270,Norte Fluminense,False,3301405
+3301504,Cordeiro,58297,Serrana,False,3301504
+3301603,Duas Barras,58319,Serrana,False,3301603
+3301702,Duque de Caxias,58335,Metropolitana,True,3301702
+3301801,Engenheiro Paulo de Frontin,58351,Centro-Sul Fluminense,False,3301801
+3301850,Guapimirim,58106,Metropolitana,True,3301850
+3301876,Iguaba Grande,58262,Baixadas Litorâneas,False,3301876
+3301900,Itaboraí,58378,Metropolitana,True,3301900
+3302007,Itaguaí,58394,Metropolitana,True,3302007
+3302056,Italva,59293,Noroeste Fluminense,False,3302056
+3302106,Itaocara,58416,Noroeste Fluminense,False,3302106
+3302205,Itaperuna,58432,Noroeste Fluminense,False,3302205
+3302254,Itatiaia,58440,Médio Paraíba,False,3302254
+3302270,Japeri,58149,Metropolitana,True,3302270
+3302304,Laje do Muriaé,58459,Noroeste Fluminense,False,3302304
+3302403,Macaé,58475,Norte Fluminense,False,3302403
+3302452,Macuco,58386,Serrana,False,3302452
+3302502,Magé,58491,Metropolitana,True,3302502
+3302601,Mangaratiba,58513,Costa Verde,False,3302601
+3302700,Maricá,58530,Metropolitana,True,3302700
+3302809,Mendes,58556,Centro-Sul Fluminense,False,3302809
+3302858,Mesquita,58467,Metropolitana,True,3302858
+3302908,Miguel Pereira,58572,Centro-Sul Fluminense,False,3302908
+3303005,Miracema,58599,Noroeste Fluminense,False,3303005
+3303104,Natividade,58610,Noroeste Fluminense,False,3303104
+3303203,Nilópolis,58637,Metropolitana,True,3303203
+3303302,Niterói,58653,Metropolitana,True,3303302
+3303401,Nova Friburgo,58670,Serrana,False,3303401
+3303500,Nova Iguaçu,58696,Metropolitana,True,3303500
+3303609,Paracambi,58718,Metropolitana,True,3303609
+3303807,Paraty,58750,Costa Verde,False,3303807
+3303708,Paraíba do Sul,58734,Centro-Sul Fluminense,False,3303708
+3303856,Paty do Alferes,59315,Centro-Sul Fluminense,False,3303856
+3303906,Petrópolis,58777,Metropolitana,True,3303906
+3303955,Pinheiral,58246,Médio Paraíba,False,3303955
+3304003,Piraí,58793,Médio Paraíba,False,3304003
+3304102,Porciúncula,58815,Noroeste Fluminense,False,3304102
+3304110,Porto Real,58327,Médio Paraíba,False,3304110
+3304128,Quatis,58025,Médio Paraíba,False,3304128
+3304144,Queimados,58122,Metropolitana,True,3304144
+3304151,Quissamã,58009,Norte Fluminense,False,3304151
+3304201,Resende,58831,Médio Paraíba,False,3304201
+3304300,Rio Bonito,58858,Metropolitana,True,3304300
+3304409,Rio Claro,58874,Médio Paraíba,False,3304409
+3304508,Rio das Flores,58890,Médio Paraíba,False,3304508
+3304524,Rio das Ostras,58203,Baixadas Litorâneas,False,3304524
+3304557,Rio de Janeiro,60011,Metropolitana,True,3304557
+3304607,Santa Maria Madalena,58912,Serrana,False,3304607
+3304706,Santo Antônio de Pádua,58939,Noroeste Fluminense,False,3304706
+3305406,Sapucaia,59072,Centro-Sul Fluminense,False,3305406
+3305505,Saquarema,59099,Baixadas Litorâneas,False,3305505
+3305554,Seropédica,58424,Metropolitana,True,3305554
+3305604,Silva Jardim,59110,Baixadas Litorâneas,False,3305604
+3305703,Sumidouro,59137,Serrana,False,3305703
+3304805,São Fidélis,58955,Norte Fluminense,False,3304805
+3304755,São Francisco de Itabapoana,58289,Norte Fluminense,False,3304755
+3304904,São Gonçalo,58971,Metropolitana,True,3304904
+3305133,São José de Ubá,58343,Noroeste Fluminense,False,3305133
+3305158,São José do Vale do Rio Preto,59331,Serrana,False,3305158
+3305000,São João da Barra,58998,Norte Fluminense,False,3305000
+3305109,São João de Meriti,59013,Metropolitana,True,3305109
+3305208,São Pedro da Aldeia,59030,Baixadas Litorâneas,False,3305208
+3305307,São Sebastião do Alto,59056,Serrana,False,3305307
+3305752,Tanguá,58360,Metropolitana,True,3305752
+3305802,Teresópolis,59153,Serrana,False,3305802
+3305901,Trajano de Moraes,59170,Serrana,False,3305901
+3306008,Três Rios,59196,Centro-Sul Fluminense,False,3306008
+3306107,Valença,59218,Médio Paraíba,False,3306107
+3306156,Varre-Sai,58084,Noroeste Fluminense,False,3306156
+3306206,Vassouras,59234,Centro-Sul Fluminense,False,3306206
+3306305,Volta Redonda,59250,Médio Paraíba,False,3306305

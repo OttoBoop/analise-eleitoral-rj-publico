@@ -1,0 +1,168 @@
+id,nome,ra,ra_nome,rp,rp_nome,ap,macro
+001,Saúde,1,PORTUARIA,1.1,Centro,1,Centro
+002,Gamboa,1,PORTUARIA,1.1,Centro,1,Centro
+003,Santo Cristo,1,PORTUARIA,1.1,Centro,1,Centro
+004,Caju,1,PORTUARIA,1.1,Centro,1,Centro
+005,Centro,2,CENTRO,1.1,Centro,1,Centro
+006,Catumbi,3,RIO COMPRIDO,1.1,Centro,1,Centro
+007,Rio Comprido,3,RIO COMPRIDO,1.1,Centro,1,Centro
+008,Cidade Nova,3,RIO COMPRIDO,1.1,Centro,1,Centro
+009,Estácio,3,RIO COMPRIDO,1.1,Centro,1,Centro
+010,Imperial de São Cristóvão,7,SAO CRISTOVAO,1.1,Centro,1,Centro
+011,Mangueira,7,SAO CRISTOVAO,1.1,Centro,1,Centro
+012,Benfica,7,SAO CRISTOVAO,1.1,Centro,1,Centro
+013,Paquetá,21,PAQUETA,1.1,Centro,1,Centro
+014,Santa Teresa,23,SANTA TEREZA,1.1,Centro,1,Centro
+015,Flamengo,4,BOTAFOGO,2.1,Zona Sul,2,Zona Sul
+016,Glória,4,BOTAFOGO,2.1,Zona Sul,2,Zona Sul
+017,Laranjeiras,4,BOTAFOGO,2.1,Zona Sul,2,Zona Sul
+018,Catete,4,BOTAFOGO,2.1,Zona Sul,2,Zona Sul
+019,Cosme Velho,4,BOTAFOGO,2.1,Zona Sul,2,Zona Sul
+020,Botafogo,4,BOTAFOGO,2.1,Zona Sul,2,Zona Sul
+021,Humaitá,4,BOTAFOGO,2.1,Zona Sul,2,Zona Sul
+022,Urca,4,BOTAFOGO,2.1,Zona Sul,2,Zona Sul
+023,Leme,5,COPACABANA,2.1,Zona Sul,2,Zona Sul
+024,Copacabana,5,COPACABANA,2.1,Zona Sul,2,Zona Sul
+025,Ipanema,6,LAGOA,2.1,Zona Sul,2,Zona Sul
+026,Leblon,6,LAGOA,2.1,Zona Sul,2,Zona Sul
+027,Lagoa,6,LAGOA,2.1,Zona Sul,2,Zona Sul
+028,Jardim Botânico,6,LAGOA,2.1,Zona Sul,2,Zona Sul
+029,Gávea,6,LAGOA,2.1,Zona Sul,2,Zona Sul
+030,Vidigal,6,LAGOA,2.1,Zona Sul,2,Zona Sul
+031,São Conrado,6,LAGOA,2.1,Zona Sul,2,Zona Sul
+032,Praça da Bandeira,8,TIJUCA,2.2,Tijuca,2,Grande Tijuca
+033,Tijuca,8,TIJUCA,2.2,Tijuca,2,Grande Tijuca
+034,Alto da Boa Vista,8,TIJUCA,2.2,Tijuca,2,Grande Tijuca
+035,Maracanã,9,VILA ISABEL,2.2,Tijuca,2,Grande Tijuca
+036,Vila Isabel,9,VILA ISABEL,2.2,Tijuca,2,Grande Tijuca
+037,Andaraí,9,VILA ISABEL,2.2,Tijuca,2,Grande Tijuca
+038,Grajaú,9,VILA ISABEL,2.2,Tijuca,2,Grande Tijuca
+039,Manguinhos,10,RAMOS,3.1,Ramos,3,Zona Norte
+040,Bonsucesso,10,RAMOS,3.1,Ramos,3,Zona Norte
+041,Ramos,10,RAMOS,3.1,Ramos,3,Zona Norte
+042,Olaria,10,RAMOS,3.1,Ramos,3,Zona Norte
+043,Penha,11,PENHA,3.5,Penha,3,Zona Norte
+044,Penha Circular,11,PENHA,3.5,Penha,3,Zona Norte
+045,Brás de Pina,11,PENHA,3.5,Penha,3,Zona Norte
+046,Cordovil,31,VIGARIO GERAL,3.5,Penha,3,Zona Norte
+047,Parada de Lucas,31,VIGARIO GERAL,3.5,Penha,3,Zona Norte
+048,Vigário Geral,31,VIGARIO GERAL,3.5,Penha,3,Zona Norte
+049,Jardim América,31,VIGARIO GERAL,3.5,Penha,3,Zona Norte
+050,Higienópolis,12,INHAUMA,3.4,Inhaúma,3,Zona Norte
+051,Jacaré,13,MEIER,3.2,Méier,3,Zona Norte
+052,Maria da Graça,12,INHAUMA,3.4,Inhaúma,3,Zona Norte
+053,Del Castilho,12,INHAUMA,3.4,Inhaúma,3,Zona Norte
+054,Inhaúma,12,INHAUMA,3.4,Inhaúma,3,Zona Norte
+055,Engenho da Rainha,12,INHAUMA,3.4,Inhaúma,3,Zona Norte
+056,Tomás Coelho,12,INHAUMA,3.4,Inhaúma,3,Zona Norte
+057,São Francisco Xavier,13,MEIER,3.2,Méier,3,Zona Norte
+058,Rocha,13,MEIER,3.2,Méier,3,Zona Norte
+059,Riachuelo,13,MEIER,3.2,Méier,3,Zona Norte
+060,Sampaio,13,MEIER,3.2,Méier,3,Zona Norte
+061,Engenho Novo,13,MEIER,3.2,Méier,3,Zona Norte
+062,Lins de Vasconcelos,13,MEIER,3.2,Méier,3,Zona Norte
+063,Méier,13,MEIER,3.2,Méier,3,Zona Norte
+064,Todos os Santos,13,MEIER,3.2,Méier,3,Zona Norte
+065,Cachambi,13,MEIER,3.2,Méier,3,Zona Norte
+066,Engenho de Dentro,13,MEIER,3.2,Méier,3,Zona Norte
+067,Água Santa,13,MEIER,3.2,Méier,3,Zona Norte
+068,Encantado,13,MEIER,3.2,Méier,3,Zona Norte
+069,Piedade,13,MEIER,3.2,Méier,3,Zona Norte
+070,Abolição,13,MEIER,3.2,Méier,3,Zona Norte
+071,Pilares,13,MEIER,3.2,Méier,3,Zona Norte
+072,Vila Kosmos,14,IRAJA,3.3,Madureira,3,Zona Norte
+073,Vicente de Carvalho,14,IRAJA,3.3,Madureira,3,Zona Norte
+074,Vila da Penha,14,IRAJA,3.3,Madureira,3,Zona Norte
+075,Vista Alegre,14,IRAJA,3.3,Madureira,3,Zona Norte
+076,Irajá,14,IRAJA,3.3,Madureira,3,Zona Norte
+077,Colégio,14,IRAJA,3.3,Madureira,3,Zona Norte
+078,Campinho,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+079,Quintino Bocaiúva,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+080,Cavalcanti,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+081,Engenheiro Leal,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+082,Cascadura,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+083,Madureira,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+084,Vaz Lobo,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+085,Turiaçú,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+086,Rocha Miranda,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+087,Honório Gurgel,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+088,Osvaldo Cruz,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+089,Bento Ribeiro,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+090,Marechal Hermes,15,MADUREIRA,3.3,Madureira,3,Zona Norte
+091,Ribeira,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+092,Zumbi,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+093,Cacuia,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+094,Pitangueiras,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+095,Praia da Bandeira,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+096,Cocotá,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+097,Bancários,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+098,Freguesia (Ilha),20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+099,Jardim Guanabara,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+100,Jardim Carioca,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+101,Tauá,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+102,Moneró,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+103,Portuguesa,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+104,Galeão,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+105,Cidade Universitária,20,ILHA DO GOVERNADOR,3.7,Ilha do Governador,3,Zona Norte
+106,Guadalupe,22,ANCHIETA,3.6,Pavuna,3,Zona Norte
+107,Anchieta,22,ANCHIETA,3.6,Pavuna,3,Zona Norte
+108,Parque Anchieta,22,ANCHIETA,3.6,Pavuna,3,Zona Norte
+109,Ricardo de Albuquerque,22,ANCHIETA,3.6,Pavuna,3,Zona Norte
+110,Coelho Neto,25,PAVUNA,3.6,Pavuna,3,Zona Norte
+111,Acari,25,PAVUNA,3.6,Pavuna,3,Zona Norte
+112,Barros Filho,25,PAVUNA,3.6,Pavuna,3,Zona Norte
+113,Costa Barros,25,PAVUNA,3.6,Pavuna,3,Zona Norte
+114,Pavuna,25,PAVUNA,3.6,Pavuna,3,Zona Norte
+115,Jacarepaguá,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+116,Anil,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+117,Gardênia Azul,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+118,Cidade de Deus,34,CIDADE DE DEUS,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+119,Curicica,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+120,Freguesia (Jacarepaguá),16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+121,Pechincha,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+122,Taquara,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+123,Tanque,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+124,Praça Seca,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+125,Vila Valqueire,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+126,Joá,24,BARRA DA TIJUCA,4.2,Barra da Tijuca,4,Barra/Jacarepaguá
+127,Itanhangá,24,BARRA DA TIJUCA,4.2,Barra da Tijuca,4,Barra/Jacarepaguá
+128,Barra da Tijuca,24,BARRA DA TIJUCA,4.2,Barra da Tijuca,4,Barra/Jacarepaguá
+129,Camorim,24,BARRA DA TIJUCA,4.2,Barra da Tijuca,4,Barra/Jacarepaguá
+130,Vargem Pequena,24,BARRA DA TIJUCA,4.2,Barra da Tijuca,4,Barra/Jacarepaguá
+131,Vargem Grande,24,BARRA DA TIJUCA,4.2,Barra da Tijuca,4,Barra/Jacarepaguá
+132,Recreio dos Bandeirantes,24,BARRA DA TIJUCA,4.2,Barra da Tijuca,4,Barra/Jacarepaguá
+133,Grumari,24,BARRA DA TIJUCA,4.2,Barra da Tijuca,4,Barra/Jacarepaguá
+134,Deodoro,33,REALENGO,5.1,Bangu,5,Zona Oeste
+135,Vila Militar,33,REALENGO,5.1,Bangu,5,Zona Oeste
+136,Campo dos Afonsos,33,REALENGO,5.1,Bangu,5,Zona Oeste
+137,Jardim Sulacap,33,REALENGO,5.1,Bangu,5,Zona Oeste
+138,Magalhães Bastos,33,REALENGO,5.1,Bangu,5,Zona Oeste
+139,Realengo,33,REALENGO,5.1,Bangu,5,Zona Oeste
+140,Padre Miguel,17,BANGU,5.1,Bangu,5,Zona Oeste
+141,Bangu,17,BANGU,5.1,Bangu,5,Zona Oeste
+142,Senador Camará,17,BANGU,5.1,Bangu,5,Zona Oeste
+143,Santíssimo,18,CAMPO GRANDE,5.2,Campo Grande,5,Zona Oeste
+144,Campo Grande,18,CAMPO GRANDE,5.2,Campo Grande,5,Zona Oeste
+145,Senador Vasconcelos,18,CAMPO GRANDE,5.2,Campo Grande,5,Zona Oeste
+146,Inhoaíba,18,CAMPO GRANDE,5.2,Campo Grande,5,Zona Oeste
+147,Cosmos,18,CAMPO GRANDE,5.2,Campo Grande,5,Zona Oeste
+148,Paciência,19,SANTA CRUZ,5.3,Santa Cruz,5,Zona Oeste
+149,Santa Cruz,19,SANTA CRUZ,5.3,Santa Cruz,5,Zona Oeste
+150,Sepetiba,19,SANTA CRUZ,5.3,Santa Cruz,5,Zona Oeste
+151,Guaratiba,26,GUARATIBA,5.4,Guaratiba,5,Zona Oeste
+152,Barra de Guaratiba,26,GUARATIBA,5.4,Guaratiba,5,Zona Oeste
+153,Pedra de Guaratiba,26,GUARATIBA,5.4,Guaratiba,5,Zona Oeste
+154,Rocinha,27,ROCINHA,2.1,Zona Sul,2,Zona Sul
+155,Jacarezinho,28,JACAREZINHO,3.2,Méier,3,Zona Norte
+156,Complexo do Alemão,29,COMPLEXO DO ALEMÃO,3.4,Inhaúma,3,Zona Norte
+157,Maré,30,COMPLEXO DA MARE,3.1,Ramos,3,Zona Norte
+158,Vasco da Gama,7,SAO CRISTOVAO,1.1,Centro,1,Centro
+159,Parque Colúmbia,25,PAVUNA,3.6,Pavuna,3,Zona Norte
+160,Gericinó,17,BANGU,5.1,Bangu,5,Zona Oeste
+161,Lapa,2,CENTRO,1.1,Centro,1,Centro
+162,Vila Kennedy,17,BANGU,5.1,Bangu,5,Zona Oeste
+163,Jabour,17,BANGU,5.1,Bangu,5,Zona Oeste
+164,Ilha de Guaratiba,26,GUARATIBA,5.4,Guaratiba,5,Zona Oeste
+165,Barra Olímpica,16,JACAREPAGUA,4.1,Jacarepaguá,4,Barra/Jacarepaguá
+166,Argentino,11,PENHA,3.5,Penha,3,Zona Norte
+167,Ingleses,12,INHAUMA,3.4,Inhaúma,3,Zona Norte

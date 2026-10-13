@@ -1,0 +1,93 @@
+ibge,tse,municipio,regiao,metropolitana
+3300100,58017,Angra dos Reis,Costa Verde,False
+3300159,58181,Aperibé,Noroeste Fluminense,False
+3300209,58033,Araruama,Baixadas Litorâneas,False
+3300225,58220,Areal,Centro-Sul Fluminense,False
+3300233,58408,Armação dos Búzios,Baixadas Litorâneas,False
+3300258,59277,Arraial do Cabo,Baixadas Litorâneas,False
+3300407,58076,Barra Mansa,Médio Paraíba,False
+3300308,58050,Barra do Piraí,Médio Paraíba,False
+3300456,58041,Belford Roxo,Metropolitana,True
+3300506,58092,Bom Jardim,Serrana,False
+3300605,58114,Bom Jesus do Itabapoana,Noroeste Fluminense,False
+3300704,58130,Cabo Frio,Baixadas Litorâneas,False
+3300803,58157,Cachoeiras de Macacu,Metropolitana,True
+3300902,58173,Cambuci,Noroeste Fluminense,False
+3301009,58190,Campos dos Goytacazes,Norte Fluminense,False
+3301108,58211,Cantagalo,Serrana,False
+3300936,58300,Carapebus,Norte Fluminense,False
+3301157,58068,Cardoso Moreira,Norte Fluminense,False
+3301207,58238,Carmo,Serrana,False
+3301306,58254,Casimiro de Abreu,Baixadas Litorâneas,False
+3300951,58165,Comendador Levy Gasparian,Centro-Sul Fluminense,False
+3301405,58270,Conceição de Macabu,Norte Fluminense,False
+3301504,58297,Cordeiro,Serrana,False
+3301603,58319,Duas Barras,Serrana,False
+3301702,58335,Duque de Caxias,Metropolitana,True
+3301801,58351,Engenheiro Paulo de Frontin,Centro-Sul Fluminense,False
+3301850,58106,Guapimirim,Metropolitana,True
+3301876,58262,Iguaba Grande,Baixadas Litorâneas,False
+3301900,58378,Itaboraí,Metropolitana,True
+3302007,58394,Itaguaí,Metropolitana,True
+3302056,59293,Italva,Noroeste Fluminense,False
+3302106,58416,Itaocara,Noroeste Fluminense,False
+3302205,58432,Itaperuna,Noroeste Fluminense,False
+3302254,58440,Itatiaia,Médio Paraíba,False
+3302270,58149,Japeri,Metropolitana,True
+3302304,58459,Laje do Muriaé,Noroeste Fluminense,False
+3302403,58475,Macaé,Norte Fluminense,False
+3302452,58386,Macuco,Serrana,False
+3302502,58491,Magé,Metropolitana,True
+3302601,58513,Mangaratiba,Costa Verde,False
+3302700,58530,Maricá,Metropolitana,True
+3302809,58556,Mendes,Centro-Sul Fluminense,False
+3302858,58467,Mesquita,Metropolitana,True
+3302908,58572,Miguel Pereira,Centro-Sul Fluminense,False
+3303005,58599,Miracema,Noroeste Fluminense,False
+3303104,58610,Natividade,Noroeste Fluminense,False
+3303203,58637,Nilópolis,Metropolitana,True
+3303302,58653,Niterói,Metropolitana,True
+3303401,58670,Nova Friburgo,Serrana,False
+3303500,58696,Nova Iguaçu,Metropolitana,True
+3303609,58718,Paracambi,Metropolitana,True
+3303807,58750,Paraty,Costa Verde,False
+3303708,58734,Paraíba do Sul,Centro-Sul Fluminense,False
+3303856,59315,Paty do Alferes,Centro-Sul Fluminense,False
+3303906,58777,Petrópolis,Metropolitana,True
+3303955,58246,Pinheiral,Médio Paraíba,False
+3304003,58793,Piraí,Médio Paraíba,False
+3304102,58815,Porciúncula,Noroeste Fluminense,False
+3304110,58327,Porto Real,Médio Paraíba,False
+3304128,58025,Quatis,Médio Paraíba,False
+3304144,58122,Queimados,Metropolitana,True
+3304151,58009,Quissamã,Norte Fluminense,False
+3304201,58831,Resende,Médio Paraíba,False
+3304300,58858,Rio Bonito,Metropolitana,True
+3304409,58874,Rio Claro,Médio Paraíba,False
+3304508,58890,Rio das Flores,Médio Paraíba,False
+3304524,58203,Rio das Ostras,Baixadas Litorâneas,False
+3304557,60011,Rio de Janeiro,Metropolitana,True
+3304607,58912,Santa Maria Madalena,Serrana,False
+3304706,58939,Santo Antônio de Pádua,Noroeste Fluminense,False
+3305406,59072,Sapucaia,Centro-Sul Fluminense,False
+3305505,59099,Saquarema,Baixadas Litorâneas,False
+3305554,58424,Seropédica,Metropolitana,True
+3305604,59110,Silva Jardim,Baixadas Litorâneas,False
+3305703,59137,Sumidouro,Serrana,False
+3304805,58955,São Fidélis,Norte Fluminense,False
+3304755,58289,São Francisco de Itabapoana,Norte Fluminense,False
+3304904,58971,São Gonçalo,Metropolitana,True
+3305133,58343,São José de Ubá,Noroeste Fluminense,False
+3305158,59331,São José do Vale do Rio Preto,Serrana,False
+3305000,58998,São João da Barra,Norte Fluminense,False
+3305109,59013,São João de Meriti,Metropolitana,True
+3305208,59030,São Pedro da Aldeia,Baixadas Litorâneas,False
+3305307,59056,São Sebastião do Alto,Serrana,False
+3305752,58360,Tanguá,Metropolitana,True
+3305802,59153,Teresópolis,Serrana,False
+3305901,59170,Trajano de Moraes,Serrana,False
+3306008,59196,Três Rios,Centro-Sul Fluminense,False
+3306107,59218,Valença,Médio Paraíba,False
+3306156,58084,Varre-Sai,Noroeste Fluminense,False
+3306206,59234,Vassouras,Centro-Sul Fluminense,False
+3306305,59250,Volta Redonda,Médio Paraíba,False
