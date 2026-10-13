@@ -70,7 +70,12 @@ def main():
                 record=next(r for r in exported if r['Território']==row['name'])
                 for prefix_key,field in [('Votos de referência','a'),('Votos comparados','b')]:
                     key=next(k for k in record if k.startswith(prefix_key));assert (float(record[key]) if record[key] else None)==row[field]
-                assert next(f for f in geo if f['properties']['id']==row['id'])['properties']['delta']==row['delta']
+                properties=next(f for f in geo if f['properties']['id']==row['id'])['properties']
+                for key,field in [('votos_referencia','a'),('votos_comparados','b'),('participacao_referencia_pct','sa'),('participacao_comparada_pct','sb'),('diferenca_participacao_pp','delta'),('diferenca_votos','dv')]:
+                    assert properties[key]==row[field]
+                assert properties['candidatura_referencia']==initial['labels']['a']
+                assert properties['candidatura_comparada']==initial['labels']['b']
+                assert not {'a','b','sa','sb'}.intersection(properties)
             page.evaluate('()=>{atlasMaps.a.setView([-22.91,-43.27],12,{animate:false});}')
             page.wait_for_function('Object.values(atlasMaps).every(m=>m.getZoom()===12)')
             center=page.evaluate('atlasMaps.a.getCenter()')
