@@ -242,3 +242,16 @@ def test_paes_2022_is_not_a_zero_candidate():
     for d in year["datasets"]:
         data=json.loads((ROOT/"web/dist/data"/d["file"]).read_text())
         assert not any(c["name"]=="EDUARDO PAES" for c in data["candidates"])
+
+
+def test_regional_presentation_separates_capital_without_losing_municipalities():
+    regions=json.loads((ROOT/'web/dist/data/regiao-capital-separada.geojson').read_text())['features']
+    assert len(regions)==9
+    members=[m for f in regions for m in f['properties']['municipios']]
+    municipalities=json.loads((ROOT/'data/reference/municipios.geojson').read_text())['features']
+    assert len(members)==len(set(members))==92
+    assert set(members)=={f['properties']['tse'] for f in municipalities}
+    capital=next(f for f in regions if f['properties']['id']=='Rio de Janeiro (capital)')
+    metro=next(f for f in regions if f['properties']['id']=='Metropolitana (sem a capital)')
+    assert capital['properties']['municipios']==['60011']
+    assert len(metro['properties']['municipios'])==21 and '60011' not in metro['properties']['municipios']

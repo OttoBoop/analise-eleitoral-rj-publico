@@ -44,6 +44,8 @@ def main():
             page.goto(url,wait_until='domcontentloaded')
             page.wait_for_function('window.atlasState && atlasState.b && atlasState.a',timeout=120000)
             initial=page.evaluate('atlasState');assert initial['a']['votes']==paes_a and initial['b']['votes']==paes_b
+            assert page.locator('#level option[value="regiao"]').get_attribute('disabled') is not None
+            assert page.locator('#level option[value="ap"]').count()==1
             assert len(initial['rows'])>140 and any(r['delta'] is not None for r in initial['rows'])
             assert initial['semantics']['growth'] and initial['semantics']['sign']==1
             assert page.locator('#party-a,.nav[data-view="historico"],.nav[data-view="zonas"]').count()==0
@@ -168,9 +170,21 @@ def main():
             assert next(v for k,v in missing_export.items() if k.startswith('Votos comparados'))==''
             assert 'Sem seção' in next(v for k,v in missing_export.items() if k.startswith('Situação comparada'))
             page.locator('#territory').select_option('');page.wait_for_function('atlasState.rows.length===994')
+            assert page.locator('#comparison-table tbody tr[data-id]').count()==50
+            page.locator('#table-next').click();assert '51–100' in page.locator('#table-page-info').inner_text()
+            page.locator('#table-prev').click()
             page.wait_for_function('[...document.getElementById("level").options].find(option=>option.value==="ap")?.disabled===true')
             assert page.locator('#municipal-coverage summary').count()==1
             page.screenshot(path=str(OUT/'metro.png'),full_page=True)
+            page.locator('#scope').select_option('state');page.locator('#level').select_option('regiao');page.wait_for_function('atlasState.level==="regiao" && atlasState.rows.length===9')
+            regional_rows=page.evaluate('atlasState.rows')
+            assert sum(r['b'] or 0 for r in regional_rows)==person(b,'paes')['votes']
+            capital_row=next(r for r in regional_rows if r['id']=='Rio de Janeiro (capital)')
+            assert capital_row['b']==paes_b
+            metro_row=next(r for r in regional_rows if r['id']=='Metropolitana (sem a capital)')
+            assert metro_row['a'] is None and metro_row['status_a']=='fora_disputa'
+            assert metro_row['b']==2934854-paes_b
+            page.screenshot(path=str(OUT/'regions-capital-separated.png'),full_page=True)
             page.locator('#preset-paes').click();page.wait_for_function('atlasState.a?.votes==='+str(paes_a))
             municipality_geo=json.loads((ROOT/'web/dist/data/municipios.geojson').read_text())
             petropolis=next(f['properties']['tse'] for f in municipality_geo['features'] if f['properties']['nome']=='Petrópolis')
@@ -257,6 +271,19 @@ def main():
             mobile.locator('#preset-paes').click();mobile.wait_for_function('atlasState.a?.votes==='+str(paes_a))
             mobile.locator('#tab-b').click();mobile.wait_for_function('document.querySelector(".map-card.mobile-active").dataset.map==="b"')
             mobile.locator('#tab-d').click();mobile.wait_for_function('document.querySelector(".map-card.mobile-active").dataset.map==="d"')
+            mobile.locator('#scope').select_option('metro');mobile.wait_for_function('atlasState.scope==="metro" && atlasState.rows.length===994')
+            assert mobile.locator('#comparison-table tbody tr[data-id]').count()==50
+            assert mobile.evaluate('atlasFeatureLayers.d.size===994 && atlasFeatureLayers.a.size===0 && atlasFeatureLayers.b.size===0')
+            mobile.locator('#level').select_option('zona');mobile.wait_for_function('atlasState.level==="zona"')
+            assert mobile.locator('#map-d').is_hidden()
+            assert mobile.locator('#download-png').is_disabled() and mobile.locator('#download-geo').is_disabled()
+            assert all(r['delta'] is None for r in mobile.evaluate('atlasState.rows'))
+            assert mobile.locator('#download-csv').is_enabled()
+            mobile.screenshot(path=str(OUT/'mobile-zones-table.png'),full_page=True)
+            mobile.locator('#level').select_option('bairro');mobile.wait_for_function('atlasState.level==="bairro" && atlasState.rows.length===994')
+            assert mobile.locator('#map-d').is_visible() and mobile.locator('#download-png').is_enabled()
+            mobile.locator('#scope').select_option('capital');mobile.wait_for_function('atlasState.scope==="capital" && atlasState.rows.length===167')
+            assert mobile.locator('#level option[value="regiao"]').get_attribute('disabled') is not None
             mobile.wait_for_timeout(300)
             assert mobile.evaluate('atlasMaps.d.getZoom()<10')
             mobile.evaluate('window.scrollTo(0,0)')
@@ -271,8 +298,16 @@ def main():
                 pixels=[image.getpixel((x,y)) for x in range(start+10,min(start+image.width//3-10,image.width),4) for y in range(180,min(900,image.height),4)]
                 assert sum(1 for r,g,b in pixels if (b-r>25 or r-b>25) and max(r,g,b)-min(r,g,b)>40)>100,'PNG map panel lacks colored polygons'
             assert mobile.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            mobile.wait_for_selector('[data-rival-side]')
+            untouched=mobile.evaluate('atlasState.a.votes')
+            mobile.locator('[data-rival-side="b"]').last.click()
+            mobile.wait_for_function('atlasState.labels.b.includes("DOUGLAS RUAS")')
+            assert mobile.evaluate('atlasState.a.votes')==untouched
+            mobile.locator('#control-panel summary').click()
+            assert mobile.locator('#candidate-b option').count()>3
+            mobile.locator('#preset-paes').click();mobile.wait_for_function('atlasState.a?.votes==='+str(paes_a))
             assert not errors,errors
-            (OUT/'report.json').write_text(json.dumps({'passed':True,'url':url,'browser_errors':errors,'rows':len(initial['rows']),'scenarios':['colors','exports','synchronization','viewport','Ramagem','Flavio','Niteroi','metro','absence','mobile-tabs','Pages-prefix','Petropolis-municipal','second-turn-2020','unavailable-turn-2024','linked-highlights','mobile-PNG-polygons','PSD-vereador','PSD-federal','PSD-estadual','PSD-Niteroi','PSD-mobile','PSD-all-party-denominator','metro-outside-election','metro-unassigned-neighborhoods','missing-votes-export','Flavio-featured','rival-shortcuts','rival-independent-selectors','rival-all-candidates','rival-mobile']},indent=2))
+            (OUT/'report.json').write_text(json.dumps({'passed':True,'url':url,'browser_errors':errors,'rows':len(initial['rows']),'scenarios':['colors','exports','synchronization','viewport','Ramagem','Flavio','Niteroi','metro','absence','mobile-tabs','Pages-prefix','Petropolis-municipal','second-turn-2020','unavailable-turn-2024','linked-highlights','mobile-PNG-polygons','PSD-vereador','PSD-federal','PSD-estadual','PSD-Niteroi','PSD-mobile','PSD-all-party-denominator','metro-outside-election','metro-unassigned-neighborhoods','missing-votes-export','Flavio-featured','rival-shortcuts','rival-independent-selectors','rival-all-candidates','rival-mobile','mobile-zone-table','mobile-lazy-maps','pagination-full-exports','regional-capital-separated']},indent=2))
             browser.close()
     finally:
         if server:server.shutdown();server.server_close()

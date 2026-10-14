@@ -5,6 +5,8 @@ import hashlib
 import json
 import shutil
 import requests
+from shapely.geometry import shape, mapping
+from shapely.ops import unary_union
 
 ROOT = Path(__file__).resolve().parents[1]
 VENDORS = {
@@ -52,6 +54,18 @@ def main():
     (dist / 'data/psd-candidates.json').write_text(
         json.dumps({'party': 'PSD', 'candidates': psd}, ensure_ascii=False, separators=(',', ':'))+'\n'
     )
+    municipalities = json.loads((ROOT / 'data/reference/municipios.geojson').read_text())['features']
+    groups = {}
+    for feature in municipalities:
+        prop = feature['properties']
+        key = 'Rio de Janeiro (capital)' if prop['tse'] == '60011' else 'Metropolitana (sem a capital)' if prop['regiao'] == 'Metropolitana' else prop['regiao']
+        groups.setdefault(key, []).append(feature)
+    regions = {'type': 'FeatureCollection', 'classification': 'Regiões CEPERJ com capital separada da Metropolitana',
+               'features': [{'type': 'Feature', 'properties': {'id': key, 'nome': key,
+                    'municipios': [f['properties']['tse'] for f in items]},
+                    'geometry': mapping(unary_union([shape(f['geometry']) for f in items]).simplify(0.00015, preserve_topology=True))}
+                    for key, items in sorted(groups.items())]}
+    (dist / 'data/regiao-capital-separada.geojson').write_text(json.dumps(regions, ensure_ascii=False, separators=(',', ':'))+'\n')
     (ROOT / "data/manifests/vendors.json").write_text(json.dumps(manifest, indent=2))
     manifest_path = ROOT / "web/.openai/hosting.json"
     if manifest_path.exists():
