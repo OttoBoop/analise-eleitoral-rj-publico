@@ -419,6 +419,20 @@ def main():
             mobile.locator('#tab-b').click();mobile.wait_for_function('atlasFeatureLayers.b.size>49')
             assert len(mobile.evaluate('atlasPointFeatures.b.features'))>2000
             assert mobile.locator('#map-b canvas').count()>0
+            zone_view_frame=mobile.evaluate('({center:atlasMaps.b.getCenter(),zoom:atlasMaps.b.getZoom()})')
+            def check_mobile_popup(point,long_evidence=False):
+                mobile.locator('#map-b').scroll_into_view_if_needed()
+                mobile.wait_for_function('''(point)=>{const map=atlasMaps.b,container=map.getContainer().getBoundingClientRect(),popup=document.querySelector('#map-b .leaflet-popup'),position=map.latLngToContainerPoint([point.lat,point.lon]),size=map.getSize();if(!popup)return false;const box=popup.getBoundingClientRect();return position.x>=0&&position.x<=size.x&&position.y>=0&&position.y<=size.y&&box.width<=container.width&&box.height<=container.height&&box.left>=container.left-1&&box.right<=container.right+1&&box.top>=container.top-1&&box.bottom<=container.bottom+1;}''',arg=point)
+                assert not mobile.locator('#map-b .leaflet-control-zoom-in').is_visible()
+                # Probe the title and address's first character, which used
+                # to sit beneath Leaflet's zoom control in the mobile corner.
+                assert mobile.locator('#map-b .leaflet-popup-content').evaluate('''(content)=>{const title=content.querySelector('b')?.firstChild,address=[...content.childNodes].find(node=>node.nodeType===Node.TEXT_NODE&&node.textContent.trim());return [title,address].every(node=>{if(!node)return false;const range=document.createRange();range.setStart(node,0);range.setEnd(node,1);const box=range.getBoundingClientRect();return box.width>0&&content.contains(document.elementFromPoint(box.x+box.width/2,box.y+box.height/2));});}''')
+                if long_evidence:
+                    content=mobile.locator('#map-b .leaflet-popup-content')
+                    assert content.evaluate('(el)=>el.scrollHeight>el.clientHeight && getComputedStyle(el).overflowY==="auto"')
+                    content.evaluate('(el)=>{el.scrollTop=el.scrollHeight;}')
+                    assert content.evaluate('(el)=>el.scrollTop>0')
+                return mobile.evaluate('({center:atlasMaps.b.getCenter(),zoom:atlasMaps.b.getZoom()})')
             # Reused markers must lose their old grouping parents; the new
             # zone index keeps every polling location exactly once.
             for metric in ['votes','share','votes','share']:
@@ -431,10 +445,17 @@ def main():
                 assert mobile.evaluate('atlasFeatureLayers.b.get(previousZoneId).getLayers().includes(previousZoneMarker)')
             corrected=mobile.evaluate('atlasPointFeatures.b.features.find(f=>f.properties.id==="60011:211:1341:1").properties')
             mobile.evaluate('''(point)=>{atlasFeatureLayers.b.get(point.territory_id).getLayers().find(layer=>layer.feature.properties.id===point.id).openPopup();}''',corrected)
+            corrected_frame=check_mobile_popup(corrected,long_evidence=True)
             coordinate_links=mobile.locator('#map-b .leaflet-popup-content a').evaluate_all('els=>els.filter(el=>el.textContent.startsWith("Fonte da coordenada / correção")).map(el=>el.getAttribute("href"))')
             assert len(coordinate_links)==2 and all(';https' not in url for url in coordinate_links)
             assert set(coordinate_links)=={url.strip() for url in corrected['source'].split(';') if url.strip().startswith(('https://','http://'))}
             mobile.evaluate('()=>{atlasMaps.b.closePopup();}')
+            # Leaflet removes a closed popup after its fade-out transition.
+            # Wait for that lifecycle before asserting against the next popup,
+            # especially on the CPU-throttled browser used in CI.
+            mobile.wait_for_function('!document.querySelector("#map-b .leaflet-popup-content")')
+            assert mobile.evaluate('(point)=>atlasMaps.b.getBounds().contains([point.lat,point.lon])',corrected)
+            assert mobile.locator('#map-b .leaflet-control-zoom-in').is_visible()
             # A registered polling location can lack nominal-vote linkage in
             # this contest even when its zone has votes. Keep that state local.
             unlinked=mobile.evaluate('atlasPointFeatures.b.features.find(f=>f.properties.result_status==="sem_votacao_associada").properties')
@@ -442,9 +463,13 @@ def main():
             assert unlinked['votes'] is None and unlinked['denominator'] is None
             assert next(r for r in mobile.evaluate('atlasState.rows') if r['id']==unlinked['territory_id'])['b']>0
             mobile.evaluate('''(point)=>{atlasFeatureLayers.b.get(point.territory_id).getLayers().find(layer=>layer.feature.properties.id===point.id).openPopup();}''',unlinked)
+            unlinked_frame=check_mobile_popup(unlinked)
             assert unlinked_reason in mobile.locator('#map-b .leaflet-popup-content').inner_text()
             assert 'Votos disponíveis' not in mobile.locator('#map-b .leaflet-popup-content').inner_text()
             mobile.evaluate('()=>{atlasMaps.b.closePopup();}')
+            mobile.wait_for_function('!document.querySelector("#map-b .leaflet-popup-content")')
+            assert mobile.evaluate('(point)=>atlasMaps.b.getBounds().contains([point.lat,point.lon])',unlinked)
+            assert mobile.locator('#map-b .leaflet-control-zoom-in').is_visible()
             with mobile.expect_download(timeout=120000) as info:mobile.locator('#download-geo').click()
             info.value.save_as(OUT/'zonas-locais-mobile.geojson')
             zone_points=json.loads((OUT/'zonas-locais-mobile.geojson').read_text())['features']
@@ -466,6 +491,10 @@ def main():
             assert excel_unlinked['votos_comparados'] is None
             assert sum(row['votos_comparados'] or 0 for row in local_records)==sum(f['properties']['votos_comparados'] or 0 for f in zone_points)
             # Exercise a real touch drag, zoom button and successive lazy tabs.
+            # Popup autoPan keeps the selected location under its box. Start
+            # the independent gesture test from the metropolitan overview.
+            mobile.evaluate('(frame)=>{atlasMaps.b.setView(frame.center,frame.zoom,{animate:false,reset:true});}',zone_view_frame)
+            mobile.wait_for_function('(frame)=>Object.values(atlasMaps).every(map=>map.getZoom()===frame.zoom&&map.getCenter().equals(L.latLng(frame.center.lat,frame.center.lng),1e-10))',arg=zone_view_frame)
             mobile.locator('#map-b').scroll_into_view_if_needed()
             map_box=mobile.locator('#map-b').bounding_box()
             old_center=mobile.evaluate('atlasMaps.b.getCenter()')
@@ -490,6 +519,17 @@ def main():
             mobile.locator('#comparison-table tbody tr[data-id]').first.dispatch_event('mouseleave')
             assert all(r['delta'] is None for r in mobile.evaluate('atlasState.rows'))
             assert mobile.locator('#download-csv').is_enabled()
+            mobile.locator('#map-b').scroll_into_view_if_needed()
+            visible_point_count=mobile.evaluate('''()=>{const map=atlasMaps.b,size=map.getSize();return atlasPointFeatures.b.features.filter(feature=>{const point=map.latLngToContainerPoint([feature.geometry.coordinates[1],feature.geometry.coordinates[0]]);return feature.properties.votes>0&&point.x>=0&&point.x<=size.x&&point.y>=0&&point.y<=size.y;}).length;}''')
+            assert visible_point_count>100,'Zone points left the viewport after touch/zoom/tabs'
+            mobile.locator('#map-b').screenshot(path=str(OUT/'mobile-zones-map-crop.png'))
+            from PIL import Image
+            zone_image=Image.open(OUT/'mobile-zones-map-crop.png').convert('RGB')
+            # Exclude the municipal context stroke (#9cabbc) and pale map
+            # background: only stronger blue polling-location fills count.
+            blue_pixels=sum(1 for r,g,b in zone_image.getdata() if b-r>50 and b-g>15)
+            assert blue_pixels>1000,'Mobile zone screenshot lacks colored polling points'
+            (OUT/'mobile-zone-visual-check.json').write_text(json.dumps({'cpu_throttle':4,'initial_frame':zone_view_frame,'corrected_popup_frame':corrected_frame,'unlinked_popup_frame':unlinked_frame,'gesture_frame':frame,'visible_voted_points':visible_point_count,'blue_pixels':blue_pixels},indent=2))
             mobile.screenshot(path=str(OUT/'mobile-zones-map.png'),full_page=True)
             mobile.locator('#tab-d').click()
             mobile.locator('#level').select_option('bairro');mobile.wait_for_function('atlasState.level==="bairro" && atlasState.rows.length==='+str(metro_count))
