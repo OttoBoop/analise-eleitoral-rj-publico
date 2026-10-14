@@ -168,7 +168,7 @@ def main():
             assert next(v for k,v in missing_export.items() if k.startswith('Votos comparados'))==''
             assert 'Sem seção' in next(v for k,v in missing_export.items() if k.startswith('Situação comparada'))
             page.locator('#territory').select_option('');page.wait_for_function('atlasState.rows.length===994')
-            assert page.evaluate('document.querySelector("#level option[value=ap]").disabled'),page.evaluate('({scope:document.querySelector("#scope").value,level:document.querySelector("#level").value,rows:atlasState.rows.length})')
+            page.wait_for_function('[...document.getElementById("level").options].find(option=>option.value==="ap")?.disabled===true')
             assert page.locator('#municipal-coverage summary').count()==1
             page.screenshot(path=str(OUT/'metro.png'),full_page=True)
             page.locator('#preset-paes').click();page.wait_for_function('atlasState.a?.votes==='+str(paes_a))
