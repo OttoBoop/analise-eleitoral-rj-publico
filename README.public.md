@@ -37,3 +37,7 @@ Este repositório tem histórico independente e contém somente código, testes,
 Para conferir localmente o painel já agregado, basta instalar dependências, executar `scripts/build_site.py` e servir `web/dist` por HTTP. A QA inicia e encerra seu próprio servidor e aceita Chromium instalado ou o navegador gerenciado pelo Playwright.
 
 O atalho **Vereadores e deputados do PSD** permite buscar candidaturas por nome ou número, escolher cargo, eleição e município e selecionar independentemente referência e comparado. A filiação exibida é a registrada no TSE em cada eleição; a lista inclui todas as candidaturas, não apenas eleitos. O denominador de participação continua incluindo os votos nominais válidos de todos os partidos.
+
+Bairros sem votos atribuídos são acompanhados do motivo na tabela, no mapa e nas exportações. Ausência de seções associadas, território fora da disputa e malha indisponível não são tratados como zero voto. A auditoria reproduzível de Paes está em `scripts/audit_neighborhoods.py`; requer os Parquets locais já processados. A contenção da coordenada TSE no polígono não certifica independentemente o endereço da escola.
+
+Os atalhos no topo destacam Witzel (2018), Cláudio Castro (2022) e Douglas Ruas (2026) para governador no primeiro turno. Cada candidatura pode ser selecionada independentemente em qualquer lado; a busca mantém todos os candidatos e as participações usam o total completo da disputa.

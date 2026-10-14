@@ -10,9 +10,9 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_REPOSITORY = 'OttoBoop/analise-eleitoral-rj-publico'
 SCRIPTS = ['fetch_sources.py','fetch_geography.py','fetch_metro_geography.py','pipeline.py',
-           'build_temporal_audit.py','build_site.py','browser_qa.py','update.py','prepare_publication.py']
+           'build_temporal_audit.py','build_site.py','browser_qa.py','update.py','prepare_publication.py','audit_neighborhoods.py']
 MANIFESTS = ['sources.json','vendors.json','headers.json','headers-partido.json',
-             'coleta-validacao.json','validation.json','zone-comparisons.csv']
+             'coleta-validacao.json','validation.json','zone-comparisons.csv','paes-neighborhood-audit.json']
 FORBIDDEN = {'docs','prompts','planos','raw','processed','.git','.openai','__pycache__',
              '.pytest_cache','.venv','outputs','logs'}
 

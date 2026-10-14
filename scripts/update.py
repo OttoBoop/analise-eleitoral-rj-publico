@@ -19,6 +19,7 @@ for command in [
     [sys.executable,"scripts/fetch_geography.py"],
     [sys.executable,"scripts/fetch_metro_geography.py"],
     [sys.executable,"scripts/pipeline.py","--years",*years],
+    [sys.executable,"scripts/audit_neighborhoods.py","--years",*years,"--merge"],
     [sys.executable,"scripts/build_temporal_audit.py"],
     [sys.executable,"scripts/build_site.py"],
     [sys.executable,"-m","pytest","-q"],

@@ -47,6 +47,27 @@ def main():
             assert len(initial['rows'])>140 and any(r['delta'] is not None for r in initial['rows'])
             assert initial['semantics']['growth'] and initial['semantics']['sign']==1
             assert page.locator('#party-a,.nav[data-view="historico"],.nav[data-view="zonas"]').count()==0
+            page.wait_for_selector('.rival-candidate')
+            assert page.locator('.rival-candidate').count()==3
+            assert page.locator('.rivals-panel').bounding_box()['y']<page.locator('#control-panel').bounding_box()['y']
+            for i,(year,name,side) in enumerate([(2018,'WITZEL','a'),(2022,'CASTRO','b'),(2026,'RUAS','b')]):
+                _,rival_data=contest(year,'3')
+                rival=next(c for c in rival_data['candidates'] if name in c['name'])
+                other='b' if side=='a' else 'a'
+                before=page.evaluate('atlasState')[other]
+                page.locator(f'[data-rival="{i}"][data-rival-side="{side}"]').click()
+                page.wait_for_function(f'atlasState.labels.{side}.includes("{name}") && atlasState.{side}?.votes==={rival["capital_votes"]}')
+                assert page.evaluate('atlasState')[other]==before
+                assert page.locator(f'#candidate-{side} option').count()==len(rival_data['candidates'])+1
+                assert abs(page.evaluate(f'atlasState.{side}.share')-100*rival['capital_votes']/rival_data['meta']['capital_total'])<1e-9
+                if year==2022:
+                    freixo=next(c for c in rival_data['candidates'] if 'FREIXO' in c['name'])
+                    page.locator('#candidate-b').select_option(freixo['id'])
+                    page.wait_for_function('atlasState.b?.votes==='+str(freixo['capital_votes']))
+                    assert page.evaluate('atlasState.a')==before
+            page.locator('#preset-paes').click()
+            page.wait_for_function('atlasState.a?.votes==='+str(paes_a)+' && atlasState.b?.votes==='+str(paes_b))
+            assert page.locator('#rivals-status').inner_text()==''
             page.screenshot(path=str(OUT/'desktop.png'),full_page=True)
             for button,name in [('download-csv','comparacao.csv'),('download-xlsx','comparacao.xlsx'),('download-geo','comparacao.geojson'),('download-png','mapas.png')]:
                 with page.expect_download(timeout=120000) as info:page.locator('#'+button).click()
@@ -61,7 +82,10 @@ def main():
             assert len(sheet)-1==len(exported)
             for excel,csv_record in zip(sheet[1:],exported):
                 assert excel[0]==csv_record['Território']
-                for cell,text_value in zip(excel[1:],list(csv_record.values())[1:]):
+                for cell,(key,text_value) in zip(excel[1:],list(csv_record.items())[1:]):
+                    if key.startswith('Situação'):
+                        assert cell==text_value
+                        continue
                     expected=float(text_value) if text_value else None
                     assert cell is None if expected is None else abs(cell-expected)<1e-9
             metadata=' '.join(str(v) for row in workbook['Metadados'].values for v in row if v is not None)
@@ -75,6 +99,8 @@ def main():
                     assert properties[key]==row[field]
                 assert properties['candidatura_referencia']==initial['labels']['a']
                 assert properties['candidatura_comparada']==initial['labels']['b']
+                assert properties['situacao_referencia']==next(v for k,v in record.items() if k.startswith('Situação de referência'))
+                assert properties['situacao_comparada']==next(v for k,v in record.items() if k.startswith('Situação comparada'))
                 assert not {'a','b','sa','sb'}.intersection(properties)
             page.evaluate('()=>{atlasMaps.a.setView([-22.91,-43.27],12,{animate:false});}')
             page.wait_for_function('Object.values(atlasMaps).every(m=>m.getZoom()===12)')
@@ -120,6 +146,28 @@ def main():
             assert 'municípios distintos' in page.locator('#notice').inner_text()
             page.locator('#preset-paes').click();page.wait_for_function('atlasState.a?.votes==='+str(paes_a))
             page.locator('#scope').select_option('metro');page.wait_for_function('atlasState.scope==="metro"')
+            metro_rows=page.evaluate('atlasState.rows')
+            assert len(metro_rows)==994
+            assert sum(r['status_b']=='sem_secoes_localizadas' for r in metro_rows)==329
+            assert sum(r['status_a']=='fora_disputa' for r in metro_rows)==827
+            assert all(r['a'] is None for r in metro_rows if r['status_a']=='fora_disputa')
+            assert all(r['b'] is None for r in metro_rows if r['status_b']=='sem_secoes_localizadas')
+            assert 'ausência não significa zero' in page.locator('#notice').inner_text()
+            missing=next(r for r in metro_rows if r['name']=='Cafubá · Niterói')
+            assert missing['status_a']=='fora_disputa' and missing['status_b']=='sem_secoes_localizadas'
+            page.evaluate('(id)=>{atlasFeatureLayers.b.get(id).openPopup();}',missing['id'])
+            assert 'Sem seção com votos nominais válidos' in page.locator('#map-b .leaflet-popup-content').inner_text()
+            assert 'Fora da abrangência' in page.locator('#map-b .leaflet-popup-content').inner_text()
+            page.evaluate('()=>{atlasMaps.b.closePopup();}')
+            petropolis_row=next(r for r in metro_rows if r['name']=='Petrópolis · apenas municipal')
+            assert petropolis_row['status_b']=='sem_malha' and petropolis_row['b'] is None
+            page.locator('#territory').select_option(missing['id']);page.wait_for_function('atlasState.rows.length===1')
+            with page.expect_download(timeout=120000) as info:page.locator('#download-csv').click()
+            info.value.save_as(OUT/'bairro-sem-local.csv')
+            with (OUT/'bairro-sem-local.csv').open(encoding='utf-8-sig') as f:missing_export=next(csv.DictReader(f,delimiter=';'))
+            assert next(v for k,v in missing_export.items() if k.startswith('Votos comparados'))==''
+            assert 'Sem seção' in next(v for k,v in missing_export.items() if k.startswith('Situação comparada'))
+            page.locator('#territory').select_option('');page.wait_for_function('atlasState.rows.length===994')
             assert page.evaluate('document.querySelector("#level option[value=ap]").disabled'),page.evaluate('({scope:document.querySelector("#scope").value,level:document.querySelector("#level").value,rows:atlasState.rows.length})')
             assert page.locator('#municipal-coverage summary').count()==1
             page.screenshot(path=str(OUT/'metro.png'),full_page=True)
@@ -187,6 +235,18 @@ def main():
             assert not mobile.locator('#control-panel').get_attribute('open')
             assert mobile.evaluate('document.documentElement.scrollWidth<=innerWidth')
             assert mobile.locator('#open-psd').is_visible()
+            assert mobile.locator('#preset-flavio.featured-candidate').is_visible()
+            assert mobile.locator('#preset-flavio').bounding_box()['y']<mobile.locator('#comparar .page-head').bounding_box()['y']
+            mobile.locator('#preset-flavio').click();mobile.wait_for_function('atlasState.labels.a.includes("FLÁVIO") || atlasState.labels.a.includes("FLAVIO")')
+            mobile.locator('#preset-paes').click();mobile.wait_for_function('atlasState.a?.votes==='+str(paes_a))
+            mobile.wait_for_selector('.rival-candidate')
+            assert mobile.locator('.rival-candidate').count()==3
+            assert mobile.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            mobile.locator('[data-rival="2"][data-rival-side="b"]').click()
+            ruas=next(c for c in b['candidates'] if 'RUAS' in c['name'])
+            mobile.wait_for_function('atlasState.b?.votes==='+str(ruas['capital_votes']))
+            assert mobile.evaluate('atlasState.a.votes')==paes_a
+            mobile.locator('#preset-paes').click();mobile.wait_for_function('atlasState.b?.votes==='+str(paes_b))
             mobile.locator('#open-psd').click();mobile.wait_for_selector('.psd-candidate')
             mobile.locator('#psd-search').fill('marcio ribeiro')
             assert mobile.evaluate('document.documentElement.scrollWidth<=innerWidth')
@@ -212,7 +272,7 @@ def main():
                 assert sum(1 for r,g,b in pixels if (b-r>25 or r-b>25) and max(r,g,b)-min(r,g,b)>40)>100,'PNG map panel lacks colored polygons'
             assert mobile.evaluate('document.documentElement.scrollWidth<=innerWidth')
             assert not errors,errors
-            (OUT/'report.json').write_text(json.dumps({'passed':True,'url':url,'browser_errors':errors,'rows':len(initial['rows']),'scenarios':['colors','exports','synchronization','viewport','Ramagem','Flavio','Niteroi','metro','absence','mobile-tabs','Pages-prefix','Petropolis-municipal','second-turn-2020','unavailable-turn-2024','linked-highlights','mobile-PNG-polygons','PSD-vereador','PSD-federal','PSD-estadual','PSD-Niteroi','PSD-mobile','PSD-all-party-denominator']},indent=2))
+            (OUT/'report.json').write_text(json.dumps({'passed':True,'url':url,'browser_errors':errors,'rows':len(initial['rows']),'scenarios':['colors','exports','synchronization','viewport','Ramagem','Flavio','Niteroi','metro','absence','mobile-tabs','Pages-prefix','Petropolis-municipal','second-turn-2020','unavailable-turn-2024','linked-highlights','mobile-PNG-polygons','PSD-vereador','PSD-federal','PSD-estadual','PSD-Niteroi','PSD-mobile','PSD-all-party-denominator','metro-outside-election','metro-unassigned-neighborhoods','missing-votes-export','Flavio-featured','rival-shortcuts','rival-independent-selectors','rival-all-candidates','rival-mobile']},indent=2))
             browser.close()
     finally:
         if server:server.shutdown();server.server_close()
