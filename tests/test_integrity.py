@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 import pandas as pd
+import duckdb
 from shapely.geometry import mapping, box
 from shapely.strtree import STRtree
 
@@ -116,6 +117,10 @@ def test_duckdb_pipeline_blocks_only_the_divergent_municipality(tmp_path, monkey
     assert data['meta']['geography_status']=='parcial'
     assert {r['municipio']:r['status'] for r in data['coverage_by_municipio']}=={'60011':'verificada','60000':'bloqueada_divergencia'}
     assert data['coverage']['total']==data['coverage']['located']==100
+    local_cov={r['municipio']:r for r in data['local_coverage_by_municipio']}
+    assert local_cov['60011']['total']==local_cov['60011']['located']==100
+    assert local_cov['60000']['total']==local_cov['60000']['unlocated']==80
+    assert local_cov['60000']['located']==0
     shard=json.loads(gzip.decompress((public/data['candidates'][0]['file']).read_bytes()))
     assert any(r['bairro_id']=='3304557:ipp:001' for r in shard['10']['bairros'])
     assert all(r['bairro_id'] is None and r['votes']==80 for r in shard['10']['bairros'] if r['municipio']=='60000')
@@ -158,9 +163,29 @@ def test_all_published_aggregates_conserve_nominal_valid_votes():
                     shards[filename]=json.loads(gzip.decompress((ROOT/'web/dist/data'/filename).read_bytes()))
             data['zones']=[r for shard in shards.values() for v in shard.values() for r in v['zones']]
             data['bairros']=[r for shard in shards.values() for v in shard.values() for r in v['bairros']]
+            data['locals']=[r for shard in shards.values() for v in shard.values() for r in v.get('locals',[])]
         assert sum(r["votes"] for r in data["zones"])==sum(r["denominator"] for r in data["denominators"])
         assert sum(c["votes"] for c in data["candidates"])==data["meta"]["total"]
         assert all(r["votes"]>=0 for r in data["zones"])
+        if data.get('local_denominators'):
+            assert sum(r['votes'] for r in data['locals'])==data['meta']['total']
+            assert sum(r['denominator'] for r in data['local_denominators'])==data['meta']['total']
+            candidate_zones={}
+            candidate_locals={}
+            for row in data['zones']:
+                k=(row['candidate'],row['municipio'],row['zona'])
+                candidate_zones[k]=candidate_zones.get(k,0)+row['votes']
+            for row in data['locals']:
+                k=(row['candidate'],row['municipio'],row['zona'])
+                candidate_locals[k]=candidate_locals.get(k,0)+row['votes']
+            assert candidate_locals==candidate_zones
+            points=json.loads((ROOT/f"web/dist/data/zones-{data['meta']['year']}.json").read_text())['locations']
+            point_ids=[r['id'] for r in points]
+            assert len(point_ids)==len(set(point_ids))
+            valid_ids={r['id'] for r in points if r['lat'] is not None and r['lon'] is not None}
+            for cov in data['local_coverage_by_municipio']:
+                assert cov['located']+cov['unlocated']==cov['total']
+                assert sum(r['denominator'] for r in data['local_denominators'] if r['municipio']==cov['municipio'] and r['local_id'] in valid_ids)==cov['located']
         if "coverage_by_municipio" in data and data["coverage_by_municipio"]:
             covs = {r["municipio"]: r for r in data["coverage_by_municipio"]}
             for municipio, cov in covs.items():
@@ -230,8 +255,49 @@ def test_metro_neighborhood_ids_keep_homonyms_and_sources_distinct():
         assert municipalities[prop['municipio']]['metropolitana']
         if prop['municipio']!='60011':
             assert not any(prop.get(level) for level in ['ra','rp','ap','macro'])
-    excluded={m for m,p in municipalities.items() if p['nome'] in ['Petrópolis','Paracambi']}
+    excluded={m for m,p in municipalities.items() if p['nome'] == 'Paracambi'}
     assert not any(f['properties']['municipio'] in excluded for f in features)
+
+
+def test_transferred_sections_use_own_effective_building_and_keep_original_codes():
+    db=duckdb.connect()
+    locations=pd.DataFrame([
+        {'turno':'1','municipio':'60011','zona':'230','secao':sec,'local':loc,
+         'local_original':'1112','nome_normalizado':pipeline.norm(name),
+         'endereco_normalizado':pipeline.norm(addr)}
+        for sec,loc,name,addr in [('50','1066','Escola Jorge Zarur','Rua A, 1'),
+                                 ('52','1279','Escola Mulheres Quafá','Rua B, 2'),
+                                 ('53','1279','Escola Mulheres Quafá','Rua B, 2'),
+                                 ('69','1279','Escola Mulheres Quafá','Rua B, 2')]])
+    sections=pd.DataFrame([
+        {'CD_ELEICAO':'619','CD_TIPO_ELEICAO':'2','NR_TURNO':'1','CD_MUNICIPIO':'60011',
+         'NR_ZONA':'230','NR_SECAO':sec,'NR_LOCAL_VOTACAO':loc,
+         'NM_LOCAL_VOTACAO':name,'DS_LOCAL_VOTACAO_ENDERECO':addr}
+        for sec,loc,name,addr in [('50','1112','Escola Jorge Zarur','Rua A, 1'),
+                                 ('52','1112','Escola Mulheres Quafá','Rua B, 2'),
+                                 ('53','1112','Prédio original','Rua anterior'),
+                                 ('69','1066','Escola Jorge Zarur','Rua A, 1')]])
+    db.register('loc',locations);db.execute('CREATE TABLE locations AS SELECT * FROM loc')
+    db.register('sec_raw',sections)
+    pipeline.resolve_section_locations(db,set(sections.columns))
+    result={r[0]:r[1:] for r in db.execute('SELECT secao,result_local,effective_local,link_method FROM resolved_section_locations').fetchall()}
+    assert result['50']==('1112','1066','transferencia_original_confirmada')
+    assert result['52']==('1112','1279','transferencia_original_confirmada')
+    assert result['53']==('1112',None,'ligacao_local_pendente')
+    assert result['69']==('1066',None,'ligacao_local_pendente')
+    assert db.execute('SELECT COUNT(*) FROM resolved_section_locations').fetchone()[0]==4
+    db.close()
+
+
+def test_known_2024_transfer_regression_matches_documented_original_section_votes():
+    audit=json.loads((ROOT/'web/dist/data/audit-2024.json').read_text())
+    rows=[r for r in audit['transferred_votes'] if r['municipio']=='60011' and r['turno']=='1']
+    assert {r['cargo']:(r['sections'],r['votes']) for r in rows}=={'11':(19,4123),'13':(19,3972)}
+    dataset=json.loads((ROOT/'web/dist/data/datasets/2024-619-11-1-60011.json').read_text())
+    paes=next(c for c in dataset['candidates'] if c.get('person_id')=='paes')
+    detail=json.loads(gzip.decompress((ROOT/'web/dist/data'/paes['file']).read_bytes()))[paes['id']]
+    assert sum(r['votes'] for r in detail['bairros'] if r['bairro_id'] is None)==0
+    assert sum(r['votes'] for r in detail['bairros'] if r['bairro_id'] is not None)==paes['votes']
 
 
 def test_paes_2022_is_not_a_zero_candidate():

@@ -18,6 +18,7 @@ import time
 import unicodedata
 import zipfile
 from datetime import datetime, timezone
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import duckdb
@@ -57,21 +58,21 @@ def save_json(path, obj):
 
 def save_dataset(d, payload):
     """Bounded candidate shards avoid loading every ballot distribution on mobile."""
-    zones, bairros = payload.pop("zones"), payload.pop("bairros")
-    zone_by, bairro_by = {}, {}
-    for row in zones:
-        zone_by.setdefault(row["candidate"], []).append(row)
-    for row in bairros:
-        bairro_by.setdefault(row["candidate"], []).append(row)
+    distributions = {key: payload.pop(key, []) for key in
+                     ["zones", "bairros", "locals", "bairros_informados"]}
+    by_candidate = {key: {} for key in distributions}
+    for key, rows in distributions.items():
+        for row in rows:
+            by_candidate[key].setdefault(row["candidate"], []).append(row)
     for start in range(0, len(payload["candidates"]), 32):
         candidates = payload["candidates"][start:start+32]
         filename = f"candidates/{d['id']}/{start//32}.json.gz"
         shard = {}
         for c in candidates:
             c["file"] = filename
-            shard[c["id"]] = {"zones": zone_by.get(c["id"], []), "bairros": bairro_by.get(c["id"], [])}
+            shard[c["id"]] = {key: values.get(c["id"], []) for key, values in by_candidate.items()}
         save_json(PUBLIC / filename, shard)
-    payload["zones"], payload["bairros"] = [], []
+    payload.update({key: [] for key in distributions})
     payload["sharded"] = True
     save_json(PUBLIC / d["file"], payload)
 
@@ -220,10 +221,15 @@ def locations_for_year(db, year, geo):
     if not localpath or not geo:
         return None, []
     query_file(db, "locais_raw", localpath)
-    rows = db.execute("""SELECT DISTINCT NR_TURNO turno, CD_MUNICIPIO municipio, NR_ZONA zona,
+    columns = {r[0] for r in db.execute("DESCRIBE locais_raw").fetchall()}
+    optional = lambda name: name if name in columns else "''"
+    rows = db.execute(f"""SELECT DISTINCT DT_ELEICAO date, NR_TURNO turno, CD_MUNICIPIO municipio, NR_ZONA zona,
         NR_SECAO secao, NR_LOCAL_VOTACAO AS "local", NM_LOCAL_VOTACAO nome, DS_ENDERECO endereco,
         NM_BAIRRO bairro_informado, NR_LATITUDE latitude, NR_LONGITUDE longitude,
-        NR_SECAO_PRINCIPAL principal, CD_TIPO_SECAO_AGREGADA tipo_agregada
+        NR_SECAO_PRINCIPAL principal, CD_TIPO_SECAO_AGREGADA tipo_agregada,
+        {optional('NR_LOCAL_VOTACAO_ORIGINAL')} local_original,
+        {optional('NM_LOCAL_VOTACAO_ORIGINAL')} nome_original,
+        {optional('DS_ENDERECO_LOCVT_ORIGINAL')} endereco_original
         FROM locais_raw WHERE DT_ELEICAO IN (SELECT date FROM mun WHERE election_type='2')""").df()
     fixes = pd.read_csv(ROOT / "data/review/correcoes_locais.csv", dtype=str, keep_default_na=False)
     overrides = {}
@@ -235,7 +241,8 @@ def locations_for_year(db, year, geo):
         overrides[tuple(code(fix[k]) for k in ["turno", "municipio", "zona", "local"])] = fix
     records, pending, point_cache = [], [], {}
     for v in rows.to_dict("records"):
-        for k in ["turno", "municipio", "zona", "secao", "local"]:
+        v['latitude_original'],v['longitude_original'] = v['latitude'],v['longitude']
+        for k in ["turno", "municipio", "zona", "secao", "local", "local_original"]:
             v[k] = code(v[k])
         k = tuple(v[x] for x in ["turno", "municipio", "zona", "local"])
         fix = overrides.get(k)
@@ -246,6 +253,8 @@ def locations_for_year(db, year, geo):
         if point_key not in point_cache:
             point_cache[point_key] = classify_location(*point_key, geo)
         bairro, status, coords = point_cache[point_key]
+        if fix is not None and fix.latitude and fix.longitude and bairro:
+            status = 'correcao_documentada'
         if fix is not None and fix.bairro_id:
             bairro = fix.bairro_id
             if bairro not in geo["by_id"] and v["municipio"] == CAPITAL:
@@ -257,6 +266,10 @@ def locations_for_year(db, year, geo):
             status = "correcao_documentada"
         prop = geo["by_id"].get(bairro, {})
         v.update({"ano": year, "bairro_id": bairro, "geo_status": status,
+                  "local_id": f"{v['municipio']}:{v['zona']}:{v['local']}:{v['turno']}",
+                  "nome_normalizado": norm(v["nome"]), "endereco_normalizado": norm(v["endereco"]),
+                  "coordinate_source": fix.fonte if fix is not None and fix.latitude and fix.longitude else str(localpath.relative_to(ROOT)),
+                  "correction_source": fix.fonte if fix is not None else None,
                   "lat": coords[0] if coords else None, "lon": coords[1] if coords else None,
                   "bairro": prop.get("nome"), "ra": prop.get("ra"), "rp": prop.get("rp"),
                   "ap": prop.get("ap"), "macro": prop.get("macro"),
@@ -279,6 +292,41 @@ def locations_for_year(db, year, geo):
     db.register("locations_df", frame)
     db.execute("CREATE OR REPLACE TABLE locations AS SELECT * FROM locations_df")
     return frame, pending
+
+
+def resolve_section_locations(db, columns):
+    """Resolve own-section transfers only with documented original code and building agreement.
+
+    A numeric original code can split into several destinations. Never search
+    other sections by that code, and never replace a historical building's point.
+    """
+    name = 'NM_LOCAL_VOTACAO' if 'NM_LOCAL_VOTACAO' in columns else "''"
+    address = 'DS_LOCAL_VOTACAO_ENDERECO' if 'DS_LOCAL_VOTACAO_ENDERECO' in columns else "''"
+    metadata = db.execute(f"""SELECT DISTINCT CD_ELEICAO election, NR_TURNO turno,
+        CD_MUNICIPIO municipio, NR_ZONA zona, NR_SECAO secao, NR_LOCAL_VOTACAO result_local,
+        {name} result_name, {address} result_address FROM sec_raw
+        WHERE CD_TIPO_ELEICAO='2'""").df()
+    metadata['result_name_normalized'] = metadata.result_name.map(norm)
+    metadata['result_address_normalized'] = metadata.result_address.map(norm)
+    db.register('section_location_metadata', metadata)
+    db.execute("""CREATE OR REPLACE TABLE section_location_links AS
+        SELECT s.*, l."local" effective_local,
+        CASE WHEN s.result_local=l."local" THEN 'codigo_efetivo'
+             WHEN s.result_local=l.local_original AND s.result_name_normalized<>''
+                  AND s.result_address_normalized<>''
+                  AND s.result_name_normalized=l.nome_normalizado
+                  AND s.result_address_normalized=l.endereco_normalizado
+             THEN 'transferencia_original_confirmada' ELSE 'ligacao_local_pendente' END link_method
+        FROM section_location_metadata s LEFT JOIN locations l
+        ON s.turno=l.turno AND s.municipio=l.municipio AND s.zona=l.zona AND s.secao=l.secao""")
+    # Conflicting result metadata is not allowed to multiply a vote row.
+    db.execute("""CREATE OR REPLACE TABLE resolved_section_locations AS
+        SELECT election,turno,municipio,zona,secao,result_local,
+          CASE WHEN COUNT(*)=1 AND FIRST(link_method)<>'ligacao_local_pendente'
+               THEN FIRST(effective_local) END effective_local,
+          CASE WHEN COUNT(*)=1 THEN FIRST(link_method) ELSE 'metadados_local_ambiguos' END link_method,
+          FIRST(result_name) result_name,FIRST(result_address) result_address
+        FROM section_location_links GROUP BY election,turno,municipio,zona,secao,result_local""")
 
 
 def municipality_geography_status(verified, has_mesh):
@@ -341,6 +389,7 @@ def build_year(year, geo, force=False):
     db = duckdb.connect(str(PROCESSED / f"work_{year}.duckdb"))
     db.execute("SET memory_limit='3GB'")
     db.execute("SET threads=4")
+    db.execute("SET enable_progress_bar=false")
     query_file(db, "mun_raw", munpath)
     db.execute("""CREATE OR REPLACE TABLE mun AS SELECT CD_ELEICAO election, DT_ELEICAO date,
       CD_TIPO_ELEICAO election_type, DS_ELEICAO election_name, CD_CARGO cargo, DS_CARGO cargo_name,
@@ -427,12 +476,37 @@ def build_year(year, geo, force=False):
                       "divergent_candidate_zones": len(bad),
                       "nominal_delta": int((bad.section_nominal - bad.nominal).sum())})
         if localframe is not None:
+            resolve_section_locations(db, columns)
             db.execute("""CREATE OR REPLACE TABLE located AS SELECT s.*,s.nominal*r.factor votes,
               r.verified,l.bairro_id,l.bairro,l.ra,l.rp,l.ap,l.macro,l.geo_status,
-              l.lat,l.lon,l.nome local_name,l.endereco address
+              l.lat,l.lon,l.nome local_name,l.endereco address,l.local_id,
+              l.bairro_informado bairro_raw,x.effective_local,x.link_method,
+              l.local_original,l.coordinate_source,l.correction_source
               FROM sec s JOIN reconciliation r USING(election,cargo,turno,ue,municipio,zona,candidate)
+              LEFT JOIN resolved_section_locations x ON s.election=x.election AND s.turno=x.turno
+              AND s.municipio=x.municipio AND s.zona=x.zona AND s.secao=x.secao AND s."local"=x.result_local
               LEFT JOIN locations l ON s.turno=l.turno AND s.municipio=l.municipio AND s.zona=l.zona
-              AND s.secao=l.secao AND s."local"=l."local" """)
+              AND s.secao=l.secao AND x.effective_local=l."local" """)
+            # A valid municipal point can power a zone map without a bairro mesh.
+            # A mismatched effective-location link remains an explicit remainder.
+            db.execute("""UPDATE located SET geo_status=COALESCE(link_method,'ligacao_local_pendente')
+                WHERE geo_status IS NULL""")
+            transfers = db.execute("""SELECT x.*,l.local_original,l.nome_original,l.endereco_original,
+              l.lat,l.lon,l.bairro_id,l.geo_status FROM resolved_section_locations x
+              JOIN locations l ON x.turno=l.turno AND x.municipio=l.municipio AND x.zona=l.zona
+                AND x.secao=l.secao AND x.effective_local=l."local"
+              WHERE x.link_method='transferencia_original_confirmada'
+              ORDER BY x.turno,x.municipio,x.zona,x.secao""").df()
+            transfers.to_csv(ROOT / f"data/review/transferencias_confirmadas_{year}.csv", index=False)
+            audit['location_links'] = db.execute("""SELECT link_method,COUNT(*) sections
+                FROM resolved_section_locations GROUP BY ALL""").df().to_dict('records')
+            audit['transferred_votes'] = db.execute("""SELECT election,cargo,turno,ue,municipio,
+                COUNT(DISTINCT (zona,secao,"local")) sections,SUM(votes) votes
+                FROM located WHERE link_method='transferencia_original_confirmada' AND verified
+                GROUP BY ALL ORDER BY cargo,turno,municipio""").df().to_dict('records')
+            audit['geography_remainders'] = db.execute("""SELECT election,cargo,turno,ue,municipio,geo_status,
+                COUNT(DISTINCT (zona,secao)) sections,SUM(votes) votes
+                FROM located WHERE bairro_id IS NULL AND verified GROUP BY ALL""").df().to_dict('records')
             # A divergent zone blocks its municipality/contest only. Candidate
             # denominators are never recomputed after dropping failed rows.
             db.execute("""CREATE OR REPLACE TABLE geo_ok AS SELECT election,cargo,turno,ue,municipio,
@@ -451,12 +525,29 @@ def build_year(year, geo, force=False):
             assert conservation[0] is None or conservation[0] == (conservation[1] or 0) + (conservation[2] or 0)
             relationships = db.execute("""SELECT turno,municipio,zona,bairro_id,bairro,ra,rp,ap,macro,
                COUNT(DISTINCT "local") locals,COUNT(DISTINCT secao) sections
-               FROM locations WHERE municipio='60011' GROUP BY ALL ORDER BY turno,zona,bairro""").df()
-            localcols = ["turno","municipio","zona","local","nome","endereco","bairro_id","bairro","ra","rp","ap","macro","geo_status","lat","lon"]
-            public_locals = localframe.loc[localframe.municipio.eq(CAPITAL), localcols].drop_duplicates()
+               FROM locations GROUP BY ALL ORDER BY turno,municipio,zona,bairro""").df()
+            localcols = ["local_id","turno","municipio","zona","local","nome","endereco","bairro_id","bairro",
+                         "bairro_informado","ra","rp","ap","macro","geo_status","lat","lon","coordinate_source"]
+            public_locals = localframe[localcols].drop_duplicates()
+            # One feature per effective local/turn. Conflicting coordinates must
+            # not create repeated points bearing the same vote total.
+            public_records = []
+            for local_id, group in public_locals.groupby('local_id', sort=False):
+                v = group.iloc[0].to_dict()
+                v.update({'id': local_id, 'bairro_raw': v.pop('bairro_informado'),
+                          'status': v['geo_status'], 'source': v.pop('coordinate_source'),
+                          'link_method': 'local_efetivo_cadastro'})
+                if len(group[['lat','lon']].drop_duplicates()) > 1:
+                    v.update({'lat': None, 'lon': None, 'status': 'coordenadas_local_ambiguas'})
+                # Only municipal-contained points are rendered.
+                if v['geo_status'] in ['fora_municipio','coordenada_ausente','coordenada_invalida']:
+                    v.update({'lat': None, 'lon': None})
+                public_records.append(v)
             save_json(PUBLIC / f"zones-{year}.json", {"year": year, "status": "nao_verificada",
+                      "geometry_type": "polling_locations", "zone_boundaries": None,
+                      "description": "Pontos dos locais efetivos por eleição e turno; não representam limites legais das zonas.",
                       "relationships": relationships.where(pd.notnull(relationships), None).to_dict("records"),
-                      "locations": public_locals.to_dict("records")})
+                      "locations": public_records})
     # The detailed apuração is preserved separately and adds blank/null/legend
     # ballot totals. It is never joined to each candidate row.
     detalhe = ingest(year, "detalhe", force)
@@ -506,7 +597,65 @@ def build_year(year, geo, force=False):
         payload = {"meta": d, "candidates": candidates,
                    "zones": zone_rows.to_dict("records"), "denominators": units.to_dict("records"),
                    "bairros": [], "bairro_denominators": [], "coverage": None,
-                   "coverage_by_municipio": [], "parties": []}
+                   "coverage_by_municipio": [], "parties": [],
+                   "locals": [], "local_denominators": [], "local_coverage_by_municipio": [],
+                   "local_status_by_municipio": [], "bairros_informados": [],
+                   "bairro_informado_denominators": []}
+        if has_detail:
+            local_statuses = {m: 'verificada' if v else 'bloqueada_divergencia'
+                for m, v in db.execute("SELECT municipio,verified FROM geo_ok WHERE election=? AND cargo=? AND turno=? AND ue=?", params).fetchall()}
+            official_zone = {(r['candidate'],r['municipio'],r['zona']):int(r['votes']) for r in zone_rows.to_dict('records')}
+            votes_local = db.execute("""SELECT candidate,municipio,zona,turno,local_id,SUM(votes) votes
+                FROM located WHERE election=? AND cargo=? AND turno=? AND ue=?
+                AND verified AND local_id IS NOT NULL GROUP BY ALL""", params).df().to_dict('records')
+            consumed = {}
+            for row in votes_local:
+                if local_statuses.get(row['municipio']) != 'verificada':
+                    continue
+                payload['locals'].append(row)
+                k = (row['candidate'],row['municipio'],row['zona'])
+                consumed[k] = consumed.get(k,0)+int(row['votes'])
+            for (candidate, municipio, zona), votes in official_zone.items():
+                missing = votes-consumed.get((candidate,municipio,zona),0)
+                if missing < 0:
+                    raise ValueError('Local join multiplied authoritative zone votes')
+                payload['locals'].append({'candidate':candidate,'municipio':municipio,'zona':zona,
+                    'turno':d['turno'],'local_id':None,'votes':missing})
+            local_denoms = {}
+            for row in payload['locals']:
+                key = (row['municipio'],row['zona'],row['turno'],row['local_id'])
+                local_denoms[key] = local_denoms.get(key,0)+int(row['votes'])
+            payload['local_denominators'] = [dict(zip(['municipio','zona','turno','local_id','denominator'],[*key,v]))
+                for key,v in local_denoms.items()]
+            payload['local_status_by_municipio'] = [{'municipio':m,'status':s} for m,s in local_statuses.items()]
+            valid_points = {v['id'] for v in public_records
+                if isinstance(v['lat'],(int,float)) and isinstance(v['lon'],(int,float))
+                and math.isfinite(v['lat']) and math.isfinite(v['lon'])}
+            payload['valid_local_ids'] = sorted({lid for (_,_,_,lid) in local_denoms if lid in valid_points})
+            for municipio, status in local_statuses.items():
+                total_m = sum(v for (m,_,_,_),v in local_denoms.items() if m == municipio)
+                mapped = sum(v for (m,_,_,lid),v in local_denoms.items() if m == municipio and lid in valid_points)
+                assert 0 <= mapped <= total_m
+                payload['local_coverage_by_municipio'].append({'municipio':municipio,'total':total_m,
+                    'located':mapped,'unlocated':total_m-mapped,'percent':participation(mapped,total_m),'status':status})
+            # Reported bairros are a separate nonpolygonal classification. Never
+            # combine their identifiers with the fixed official neighborhood map.
+            paracambi = next((m for m,p in geo['municipios_by_tse'].items() if p.get('id')=='3303609'),None)
+            reported = db.execute("""SELECT candidate,municipio,bairro_raw,SUM(votes) votes FROM located
+                WHERE election=? AND cargo=? AND turno=? AND ue=? AND municipio=?
+                  AND verified AND local_id IS NOT NULL GROUP BY ALL""", [*params,paracambi]).df().to_dict('records')
+            reported_denoms = {}
+            for row in reported:
+                bairro = norm(row['bairro_raw'])
+                if not bairro or bairro in ['#NULO','#NE','NAO INFORMADO']:
+                    continue
+                bid = f"tse:{row['municipio']}:{bairro}"
+                payload['bairros_informados'].append({'candidate':row['candidate'],'municipio':row['municipio'],
+                    'bairro_id':bid,'bairro':str(row['bairro_raw']).strip(),'votes':int(row['votes'])})
+                key = (row['municipio'],bid,bairro)
+                reported_denoms[key] = reported_denoms.get(key,0)+int(row['votes'])
+            payload['bairro_informado_denominators'] = [{'municipio':m,'bairro_id':bid,'bairro':name,'denominator':v}
+                for (m,bid,name),v in reported_denoms.items()]
         party = db.execute("""SELECT party,municipio,zona,SUM(votes) nominal FROM mun
            WHERE election=? AND cargo=? AND turno=? AND ue=? AND election_type='2' GROUP BY ALL""", params).df()
         payload["parties"] = party.to_dict("records")
@@ -586,10 +735,17 @@ def export_reference(geo):
         for name, gs in groups.items()]})
 
 
+def build_year_worker(args):
+    year, force = args
+    return build_year(year, geography(), force)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--years", nargs="+", type=int, default=[2018, 2020, 2022, 2024, 2026])
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--jobs", type=int, choices=[1,2], default=1,
+                        help="Independent year processes (up to 3GB DuckDB memory per worker)")
     args = parser.parse_args()
     PROCESSED.mkdir(parents=True, exist_ok=True)
     PUBLIC.mkdir(parents=True, exist_ok=True)
@@ -597,8 +753,14 @@ def main():
     export_reference(geo)
     save_json(PUBLIC / "people.json", list(csv.DictReader((ROOT / "data/reference/candidaturas_destaque.csv").open())))
     completed = []
-    for year in args.years:
-        completed.append(build_year(year, geo, args.force))
+    if args.jobs == 1:
+        for year in args.years:
+            completed.append(build_year(year, geo, args.force))
+    else:
+        if len(args.years) != len(set(args.years)):
+            raise ValueError('Parallel year jobs must be unique')
+        with ProcessPoolExecutor(max_workers=args.jobs) as pool:
+            completed = list(pool.map(build_year_worker, [(year,args.force) for year in args.years]))
     # Preserve previously processed years when running a subset.
     old_path = PUBLIC / "catalog.json"
     old = json.loads(old_path.read_text()) if old_path.exists() else {"years": []}
@@ -608,7 +770,7 @@ def main():
         by_year.setdefault(year, {"year": year, "status": "fontes_indisponiveis", "datasets": []})
     sources_path = ROOT / "data/manifests/sources.json"
     sources = json.loads(sources_path.read_text()) if sources_path.exists() else {}
-    save_json(PUBLIC / "catalog.json", {"schema_version": 2, "generated_at": datetime.now(timezone.utc).isoformat(),
+    save_json(PUBLIC / "catalog.json", {"schema_version": 3, "generated_at": datetime.now(timezone.utc).isoformat(),
          "years": sorted(by_year.values(), key=lambda y: y["year"]), "capital": CAPITAL,
          "territory_reference": "Snapshot IPP/Data.Rio e IBGE fixado na execução; consulte fontes",
          "default": {"candidate": "EDUARDO PAES", "a": 2024, "b": 2026, "turno": "1"}})

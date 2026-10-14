@@ -23,10 +23,11 @@ from urllib.parse import urlencode, urljoin
 from zoneinfo import ZoneInfo
 
 import requests
+import pandas as pd
 import shapefile
 from pyproj import Transformer
 from shapely import STRtree
-from shapely.geometry import mapping, shape
+from shapely.geometry import Point, mapping, shape
 from shapely.ops import transform, unary_union
 from shapely.validation import explain_validity
 
@@ -37,12 +38,19 @@ NOW = lambda: datetime.now(ZoneInfo('America/Sao_Paulo')).isoformat(timespec='se
 IBGE = 'https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_de_setores_censitarios__divisoes_intramunicipais/censo_2022/bairros/shp/UF/RJ_bairros_CD2022.zip'
 MPRJ = 'https://geo.mprj.mp.br/arcgis/rest/services/Bairros_ERJ/FeatureServer/8'
 SINFOR = 'https://sinfor.marica.rj.gov.br/server/rest/services/Limites_Administrativos/FeatureServer/0'
+SINFOR_FIXED_MOMENT = 1777904313000
+SINFOR_SNAPSHOT_ID = 'sinfor_marica_historico20260504'
 RIOBONITO = 'https://riobonito.rj.gov.br/wp-content/mapa/index.html'
 RIOBONITO_NEWS = 'https://riobonito.rj.gov.br/bairros-de-rio-bonito-ganha-novos-codigos-de-enderecamento-postal/'
+PETROPOLIS = ('https://sig.petropolis.rj.gov.br/sig398/index.php/lizmap/service?'
+              + urlencode({'repository': 'publico', 'project': 'acesso_abairramento_2025',
+                           'SERVICE': 'WFS', 'VERSION': '1.0.0', 'REQUEST': 'GetFeature',
+                           'TYPENAME': 'abairramento_proposta_2026', 'OUTPUTFORMAT': 'GeoJSON',
+                           'SRSNAME': 'EPSG:4326'}))
+PETROPOLIS_LEGAL = 'Proposta municipal de abairramento 2026; aprovação legal não comprovada. Referência cartográfica fixa, sem afirmar vigência histórica.'
 QUEIMADOS_LAW = 'https://www.queimados.rj.leg.br/leis/legislacao-municipal/leis-complementares/lc-100-23-plc-128-23-msg-021-23-lei-bairros-altera-arts-2o-3o-e-7o-e-anexo-i-da-lc-068-14-inclui-os-anexos-v-e-vi-doq-120.pdf'
 MPRJ_MUNICIPIOS = ('3301850', '3302007', '3302502', '3304144', '3305554')
-MUNICIPAL_ONLY = {'3303906': 'Petrópolis: nível municipal conforme decisão do projeto',
-                  '3303609': 'Paracambi: sem malha válida de bairros disponível'}
+MUNICIPAL_ONLY = {'3303609': 'Paracambi: sem malha poligonal válida de bairros disponível; usar locais efetivos e bairro informado pelo TSE, sem estimar limites.'}
 
 
 def write_json(path, value):
@@ -118,6 +126,32 @@ def checked_feature(props, geometry, review):
     return {'type': 'Feature', 'id': props['id'], 'properties': props, 'geometry': geometry}
 
 
+def petropolis_features(payload, municipio, review):
+    """Read the named municipal proposal without inventing codes or legal status.
+
+    The WFS identifier zero is a valid bairro code. A changed feature count or
+    repeated/missing identifier requires an explicit new reference review.
+    """
+    if payload.get('type') != 'FeatureCollection' or len(payload.get('features', [])) != 45:
+        raise ValueError('Petrópolis proposal snapshot must contain exactly 45 features')
+    codes, result = set(), []
+    for feature in payload['features']:
+        p = feature.get('properties', {})
+        code = p.get('id_0')
+        if code is None or str(code).strip() == '' or str(code) in codes:
+            raise ValueError('Missing or repeated Petrópolis bairro identifier')
+        code = str(code)
+        codes.add(code)
+        candidate = checked_feature(properties(municipio, 'pmp_proposta2026', code,
+                                    p.get('nome') or p.get('bairro') or '',
+                                    {'reference_status': 'proposta_municipal_2026',
+                                     'legal_validity': PETROPOLIS_LEGAL}),
+                                    feature.get('geometry'), review)
+        if candidate:
+            result.append(candidate)
+    return result
+
+
 def audit_overlaps(features):
     """Keep valid source polygons; flag overlap area instead of editing edges.
 
@@ -142,9 +176,78 @@ def audit_overlaps(features):
     return rows
 
 
+def audit_municipality_locations(features, municipality, reference, years=(2018, 2020, 2022, 2024, 2026)):
+    """Verify a fixed reference against original TSE ZIP rows, not treated joins.
+
+    This proves spatial coverage of the archived election inventory. It does not
+    certify a school's address, historical legal boundaries, or that a future
+    second-turn inventory has actually been used in an election.
+    """
+    municipio_ibge, municipio_tse = municipality['properties']['id'], municipality['properties']['tse']
+    members = [f for f in features if f['properties']['municipio_ibge'] == municipio_ibge]
+    geometries = [shape(f['geometry']) for f in members]
+    tree = STRtree(geometries)
+    boundary = shape(municipality['geometry'])
+    reports = []
+    columns = ['SG_UF', 'CD_MUNICIPIO', 'DT_ELEICAO', 'NR_TURNO', 'NR_ZONA', 'NR_SECAO',
+               'NR_LOCAL_VOTACAO', 'NM_LOCAL_VOTACAO', 'DS_ENDERECO', 'NR_LATITUDE', 'NR_LONGITUDE']
+    for year in years:
+        path = ROOT / f'data/raw/locais_{year}.zip'
+        records = []
+        with zipfile.ZipFile(path) as archive:
+            csv_members = [n for n in archive.namelist() if n.lower().endswith('.csv')]
+            for name in csv_members:
+                with archive.open(name) as stream:
+                    for chunk in pd.read_csv(stream, sep=';', encoding='latin-1', dtype=str,
+                                             keep_default_na=False, usecols=columns, chunksize=100_000):
+                        records.extend(chunk.loc[chunk.SG_UF.eq('RJ') & chunk.CD_MUNICIPIO.eq(municipio_tse)].to_dict('records'))
+        outcomes, local_records = Counter(), {}
+        sections = set()
+        for row in records:
+            key = (row['DT_ELEICAO'], row['NR_TURNO'], row['NR_ZONA'], row['NR_LOCAL_VOTACAO'])
+            section = (*key[:3], row['NR_SECAO'])
+            sections.add(section)
+            status, matches = 'coordenada_invalida', []
+            try:
+                lat, lon = float(row['NR_LATITUDE'].replace(',', '.')), float(row['NR_LONGITUDE'].replace(',', '.'))
+                point = Point(lon, lat)
+                if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                    status = 'coordenada_invalida'
+                elif not boundary.covers(point):
+                    status = 'fora_municipio'
+                else:
+                    matches = [int(i) for i in tree.query(point) if geometries[int(i)].covers(point)]
+                    status = 'coordenada_coberta_por_um_bairro' if len(matches) == 1 else 'bairro_ambiguo' if matches else 'fora_bairros'
+            except (TypeError, ValueError):
+                lat, lon = None, None
+            outcomes[status] += 1
+            detail = {'data': key[0], 'turno': key[1], 'zona': key[2], 'local': key[3],
+                      'nome': row['NM_LOCAL_VOTACAO'], 'endereco': row['DS_ENDERECO'], 'lat': lat, 'lon': lon,
+                      'situacao': status, 'bairros_candidatos': [members[i]['id'] for i in matches]}
+            point_key = (*key, row['NR_LATITUDE'], row['NR_LONGITUDE'])
+            local_records[point_key] = detail
+        distinct_keys = {key[:4] for key in local_records}
+        key_counts = Counter(key[:4] for key in local_records)
+        reports.append({'ano': year, 'arquivo_original': str(path.relative_to(ROOT)), 'sha256': digest(path),
+                        'linhas_secao': len(records), 'chaves_secao_distintas': len(sections),
+                        'locais_por_data_turno': len(distinct_keys),
+                        'locais_por_data_turno_com_coordenadas_divergentes': sum(v > 1 for v in key_counts.values()),
+                        'situacoes_linhas': dict(outcomes), 'locais': list(local_records.values())})
+    return {'referencia': reference, 'municipio_ibge': municipio_ibge, 'municipio': municipio_tse,
+            'metodo': 'Leitura independente dos ZIPs TSE originais, cobertura estrita do município e de exatamente um polígono; sem tolerância, ajustes ou estimativas.',
+            'limites': 'Cobertura espacial do cadastro; não comprova endereço físico, vigência legal histórica ou uso de locais cadastrados para turnos futuros.',
+            'anos': reports}
+
+
+def audit_petropolis_locations(features, municipality, years=(2018, 2020, 2022, 2024, 2026)):
+    return audit_municipality_locations(features, municipality, 'pmp_proposta2026', years)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--refresh', action='store_true')
+    parser.add_argument('--audit-petropolis', action='store_true', help='Conferir os locais diretamente nos ZIPs TSE dos cinco anos')
+    parser.add_argument('--audit-marica', action='store_true', help='Conferir a recuperação histórica SINFOR nos ZIPs TSE dos cinco anos')
     args = parser.parse_args()
     RAW.mkdir(parents=True, exist_ok=True)
     manifest_path = REF / 'metro_geography_sources.json'
@@ -226,14 +329,42 @@ def main():
     source('sinfor_layer_metadata', 'marica_sinfor_metadata.json', SINFOR + '?f=pjson', publisher='Prefeitura de Maricá/SINFOR')
     url = SINFOR + '/query?' + urlencode({'where': '1=1', 'outFields': '*', 'outSR': '4326', 'f': 'geojson'})
     path = source('sinfor_marica', 'marica_sinfor_bairros.geojson', url, publisher='Prefeitura de Maricá/SINFOR')
-    payload = json.loads(path.read_text())
-    if payload.get('exceededTransferLimit'):
+    current_sinfor = json.loads(path.read_text())
+    if current_sinfor.get('exceededTransferLimit'):
         raise ValueError('Incomplete SINFOR response')
+    url = SINFOR + '/query?' + urlencode({'where':'1=1', 'outFields':'*', 'outSR':'4326',
+                                          'returnGeometry':'true', 'historicMoment':SINFOR_FIXED_MOMENT, 'f':'geojson'})
+    path = source(SINFOR_SNAPSHOT_ID, 'marica_sinfor_bairros_historico20260504.geojson', url,
+                  'Consulta histórica do serviço: 04/05/2026 14:18:33 UTC (11:18:33 Brasília)',
+                  publisher='Prefeitura de Maricá/SINFOR',
+                  legal='Snapshot municipal completo imediatamente anterior à remoção da geometria de Jardim Atlântico Central; vigência histórica dos limites não confirmada.')
+    payload = json.loads(path.read_text())
+    if payload.get('exceededTransferLimit') or len(payload.get('features', [])) != 49:
+        raise ValueError('Incomplete fixed historical SINFOR snapshot')
+    current_by_code = {f['properties']['cod_bairro']:f for f in current_sinfor['features']}
+    for f in current_sinfor['features']:
+        if not f.get('geometry'):
+            reviews.append({**properties(municipios['3302700'],'sinfor',str(f['properties']['cod_bairro']),f['properties']['bairro']),
+                'situacao':'recuperada_por_snapshot_municipal_historico_completo', 'motivo':'geometria_ausente',
+                'justificativa':'A geometria ausente do snapshot atual foi recuperada da versão histórica do próprio SINFOR. Todos os bairros de Maricá usam o mesmo instante histórico, sem misturar versões.',
+                'source_snapshot_id':SINFOR_SNAPSHOT_ID,'historic_moment':SINFOR_FIXED_MOMENT})
     for f in payload['features']:
         p = f['properties']
-        candidate = checked_feature(properties(municipios['3302700'], 'sinfor', str(p['cod_bairro']), p['bairro']), f['geometry'], reviews)
+        if p['cod_bairro'] not in current_by_code:
+            raise ValueError('Unknown bairro code in historical SINFOR snapshot')
+        candidate = checked_feature(properties(municipios['3302700'], 'sinfor', str(p['cod_bairro']), p['bairro'],
+                    {'source_snapshot_id':SINFOR_SNAPSHOT_ID,'historic_moment':SINFOR_FIXED_MOMENT,
+                     'reference_timestamp':'2026-05-04T14:18:33Z'}), f['geometry'], reviews)
         if candidate:
             features.append(candidate)
+
+    path = source('petropolis_proposta2026', 'petropolis_abairramento_proposta2026.geojson', PETROPOLIS,
+                  'Proposta de abairramento 2026; data de geração do vetor não informada pelo serviço',
+                  publisher='Prefeitura de Petrópolis/SIG', legal=PETROPOLIS_LEGAL)
+    features.extend(petropolis_features(json.loads(path.read_text()), municipios['3303906'], reviews))
+    reviews.append({'id': '3303906:pmp_proposta2026:versao', 'nome': 'Petrópolis — proposta municipal 2026',
+                    'municipio': municipios['3303906']['tse'], 'municipio_ibge': '3303906', 'source': 'pmp_proposta2026',
+                    'situacao': 'proposta_municipal_vigencia_legal_nao_confirmada', 'motivo': PETROPOLIS_LEGAL})
 
     path = source('riobonito_index', 'riobonito_mapa.html', RIOBONITO, kind='html', publisher='Prefeitura de Rio Bonito')
     source('riobonito_noticia_2026', 'riobonito_bairros_2026.html', RIOBONITO_NEWS, 'Notícia municipal 2026; data de geração cartográfica não informada', 'html', 'Prefeitura de Rio Bonito')
@@ -272,6 +403,14 @@ def main():
     write_json(REF / 'display/bairros-metro.geojson', display)
     write_json(REF / 'metro_geography_review.json', {'features': reviews, 'overlaps': overlaps,
                'policy': 'Não reparar geometrias, estimar limites nem atribuir automaticamente pontos cobertos por múltiplos bairros.'})
+    if args.audit_petropolis:
+        municipality = next(f for f in municipal_features if f['properties']['id'] == '3303906')
+        audit = audit_petropolis_locations(features, municipality)
+        write_json(REF / 'petropolis_local_coverage.json', audit)
+    if args.audit_marica:
+        municipality = next(f for f in municipal_features if f['properties']['id'] == '3302700')
+        audit = audit_municipality_locations(features, municipality, SINFOR_SNAPSHOT_ID)
+        write_json(REF / 'marica_local_coverage.json', audit)
     rows = []
     for code, municipio in sorted(municipios.items()):
         members = [f for f in features if f['properties']['municipio_ibge'] == code]
@@ -282,13 +421,14 @@ def main():
                      'bairros': len(members), 'sources': sorted({f['properties']['source'] for f in members}),
                      'quarentena': len(rejected), 'situacao': 'somente_municipio' if code in MUNICIPAL_ONLY else 'malha_parcial_ou_vigencia_nao_confirmada',
                      'area_municipal_coberta_fracao': union.intersection(boundary).area / boundary.area if union is not None else None,
-                     'motivo': MUNICIPAL_ONLY.get(code, 'Cobertura eleitoral será calculada pelos locais efetivamente atribuídos; área coberta não é cobertura de votos.')})
-    manifest = {'version': 'metropolitana-v2', 'collected_at': NOW(), 'territorial_reference': 'IPP snapshot existente / IBGE bairros2022 / MPRJ snapshot / SINFOR snapshot / Prefeitura de Rio Bonito snapshot2026',
+                     'motivo': PETROPOLIS_LEGAL if code == '3303906' else MUNICIPAL_ONLY.get(code, 'Cobertura eleitoral será calculada pelos locais efetivamente atribuídos; área coberta não é cobertura de votos.'),
+                     'fallback': 'locais_efetivos_e_bairro_informado_tse' if code == '3303609' else None})
+    manifest = {'version': 'metropolitana-v3', 'collected_at': NOW(), 'territorial_reference': 'IPP snapshot existente / IBGE bairros2022 / MPRJ snapshot / SINFOR snapshot municipal completo de 04/05/2026 14:18:33 UTC / Prefeitura de Rio Bonito snapshot2026 / proposta municipal de Petrópolis2026 (aprovação legal não comprovada)',
                 'sources': sources, 'municipios': rows, 'audit': {'municipios_escopo': 22, 'municipios_com_bairros': len({f['properties']['municipio_ibge'] for f in features}),
                 'bairros_validos': len(features), 'source_counts': dict(Counter(f['properties']['source'] for f in features)),
                 'quarentena': sum(r['situacao'] == 'quarentena' for r in reviews), 'overlap_pairs': len(overlaps),
                 'municipios_somente_municipal': sorted(MUNICIPAL_ONLY)},
-                'products': [{'file': 'data/reference/' + name, 'bytes': (REF / name).stat().st_size, 'sha256': digest(REF / name)} for name in ['bairros-metro.geojson', 'display/bairros-metro.geojson', 'metro_geography_review.json']]}
+                'products': [{'file': 'data/reference/' + name, 'bytes': (REF / name).stat().st_size, 'sha256': digest(REF / name)} for name in ['bairros-metro.geojson', 'display/bairros-metro.geojson', 'metro_geography_review.json', 'petropolis_local_coverage.json', 'marica_local_coverage.json'] if (REF / name).exists()]}
     write_json(manifest_path, manifest)
     with (REF / 'bairros_metro_classificacao.csv').open('w', encoding='utf8', newline='') as out:
         fields = ['id', 'nome', 'municipio', 'municipio_ibge', 'municipio_nome', 'tipo', 'source', 'legacy_id', 'ra', 'rp', 'ap', 'macro']

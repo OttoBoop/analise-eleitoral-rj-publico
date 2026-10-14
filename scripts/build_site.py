@@ -2,6 +2,7 @@
 """Assemble only public assets; private docs are never copied into dist."""
 from pathlib import Path
 import hashlib
+import gzip
 import json
 import shutil
 import requests
@@ -51,6 +52,35 @@ def main():
                 'votes': candidate['votes'],
             })
     (dist / 'data').mkdir(exist_ok=True)
+    for name in ['geographic-evidence.json','zone-geometry-attempts.json']:
+        source = ROOT / 'data/manifests' / name
+        if source.exists():
+            # Keep the same deterministic public representation as the audit.
+            (dist/'data'/name).write_text(json.dumps(json.loads(source.read_text()),ensure_ascii=False,
+                                                    allow_nan=False,separators=(',',':'))+'\n')
+    coverage_reference=ROOT/'data/reference/petropolis_local_coverage.json'
+    if coverage_reference.exists():
+        shutil.copyfile(coverage_reference,dist/'data/petropolis-local-coverage.json')
+    catalog_path = dist/'data/catalog.json'
+    if catalog_path.exists():
+        catalog = json.loads(catalog_path.read_text())
+        for year in catalog['years']:
+            inventory = dist/'data'/f"zones-{year['year']}.json"
+            if inventory.exists():
+                compact = inventory.with_suffix('.json.gz')
+                compact.write_bytes(gzip.compress(inventory.read_bytes(),compresslevel=6,mtime=0))
+                year['locations_file'] = compact.name
+        catalog_path.write_text(json.dumps(catalog,ensure_ascii=False,separators=(',',':'))+'\n')
+        inventories = {}
+        for path in (dist/'data/datasets').glob('*.json'):
+            data=json.loads(path.read_text())
+            year=data['meta']['year']
+            if year not in inventories:
+                inventory=dist/'data'/f'zones-{year}.json'
+                records=json.loads(inventory.read_text())['locations'] if inventory.exists() else []
+                inventories[year]={r['id'] for r in records if r.get('id') and r.get('lat') is not None and r.get('lon') is not None}
+            data['valid_local_ids']=sorted({r['local_id'] for r in data.get('local_denominators',[]) if r['local_id'] in inventories[year]})
+            path.write_text(json.dumps(data,ensure_ascii=False,separators=(',',':')))
     (dist / 'data/psd-candidates.json').write_text(
         json.dumps({'party': 'PSD', 'candidates': psd}, ensure_ascii=False, separators=(',', ':'))+'\n'
     )

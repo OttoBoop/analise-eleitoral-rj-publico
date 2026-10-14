@@ -1,0 +1,92 @@
+{
+  "type": "FeatureCollection",
+  "source": "https://pgeo3.rio.rj.gov.br/arcgis/rest/services/CadLog/Numero_de_porta/MapServer/0",
+  "checked_at": "2026-10-14",
+  "role": "Institutional school door subset with full facility type/name and exact number/street verified against original election profile and result records; no residential doors",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 267946,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -43.18222424317601,
+          -22.918197568552863
+        ]
+      },
+      "properties": {
+        "objectid": 267946,
+        "np": "50",
+        "cl": "069575",
+        "nome_grupo": "ESCOLA MUNICIPAL MACHADO DE ASSIS",
+        "cod_uso": 6,
+        "data_inc": null,
+        "data_int": null,
+        "logradouro_verificado": "Rua Dias de Barros"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 652039,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -43.253314806939656,
+          -22.880959515422088
+        ]
+      },
+      "properties": {
+        "objectid": 652039,
+        "np": "268",
+        "cl": "069443",
+        "nome_grupo": "ESCOLA MUNICIPAL ALBINO SOUZA CRUZ",
+        "cod_uso": 6,
+        "data_inc": null,
+        "data_int": null,
+        "logradouro_verificado": "Avenida dos Democráticos"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 76357,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -43.29387366199795,
+          -22.83481392741327
+        ]
+      },
+      "properties": {
+        "objectid": 76357,
+        "np": "237",
+        "cl": "034439",
+        "nome_grupo": "ESCOLA MUNICIPAL MINISTRO PLÍNIO CASADO",
+        "cod_uso": 6,
+        "data_inc": null,
+        "data_int": null,
+        "logradouro_verificado": "Rua Pequiri"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 34108,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -43.20324337401525,
+          -22.961113078554966
+        ]
+      },
+      "properties": {
+        "objectid": 34108,
+        "np": "5",
+        "cl": "079780",
+        "nome_grupo": "ESCOLA MUNICIPAL PEDRO ERNESTO",
+        "cod_uso": 6,
+        "data_inc": null,
+        "data_int": null,
+        "logradouro_verificado": "Rua Professor Abelardo Lobo"
+      }
+    }
+  ]
+}
