@@ -35,3 +35,5 @@ O GitHub Actions valida código, conservação dos votos e interface e publica *
 Este repositório tem histórico independente e contém somente código, testes, referências geográficas, manifestos públicos e produtos compactos. Documentos privados de trabalho e o histórico do projeto original não são distribuídos.
 
 Para conferir localmente o painel já agregado, basta instalar dependências, executar `scripts/build_site.py` e servir `web/dist` por HTTP. A QA inicia e encerra seu próprio servidor e aceita Chromium instalado ou o navegador gerenciado pelo Playwright.
+
+O atalho **Vereadores e deputados do PSD** permite buscar candidaturas por nome ou número, escolher cargo, eleição e município e selecionar independentemente referência e comparado. A filiação exibida é a registrada no TSE em cada eleição; a lista inclui todas as candidaturas, não apenas eleitos. O denominador de participação continua incluindo os votos nominais válidos de todos os partidos.

@@ -29,6 +29,29 @@ def main():
     for source in (ROOT / "web").iterdir():
         if source.is_file() and source.suffix in {'.html', '.css', '.js', '.mjs'}:
             shutil.copyfile(source, dist / source.name)
+    # Build a small directory from the already validated candidate metadata.
+    # Voting distributions remain in the existing on-demand candidate shards.
+    psd = []
+    for path in sorted((dist / 'data/datasets').glob('*.json')):
+        data = json.loads(path.read_text())
+        meta = data['meta']
+        if meta['cargo'] not in {'13', '6', '7'} or meta['turno'] != '1':
+            continue
+        for candidate in data['candidates']:
+            if candidate['party'] != 'PSD':
+                continue
+            psd.append({
+                'dataset': meta['id'], 'candidate': candidate['id'],
+                'name': candidate['name'], 'full_name': candidate['full_name'],
+                'number': candidate['number'], 'year': meta['year'],
+                'cargo': meta['cargo'], 'cargo_name': meta['cargo_name'],
+                'ue': meta['ue'], 'ue_name': meta['ue_name'],
+                'votes': candidate['votes'],
+            })
+    (dist / 'data').mkdir(exist_ok=True)
+    (dist / 'data/psd-candidates.json').write_text(
+        json.dumps({'party': 'PSD', 'candidates': psd}, ensure_ascii=False, separators=(',', ':'))+'\n'
+    )
     (ROOT / "data/manifests/vendors.json").write_text(json.dumps(manifest, indent=2))
     manifest_path = ROOT / "web/.openai/hosting.json"
     if manifest_path.exists():

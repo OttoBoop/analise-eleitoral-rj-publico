@@ -21,7 +21,14 @@
     <header class="topbar"><div class="breadcrumb">RIO DE JANEIRO <span>/</span> HISTÓRICO ELEITORAL</div><div id="snapshot" class="snapshot">Carregando fontes…</div></header>
     <div id="loading" role="status" class="loading">Preparando o atlas eleitoral…</div>
     <section id="comparar" class="view active" aria-label="Comparar eleições">
-      <div class="page-head"><div><p class="eyebrow">COMPARAÇÃO TERRITORIAL</p><h1>Compare o voto no território</h1><p class="intro">Compare eleições, explore o território e acompanhe a participação dos candidatos.</p></div><div class="head-actions"><button class="secondary" id="preset-paes">Eduardo Paes</button><button class="secondary" id="preset-flavio">Flávio Valle</button></div></div>
+      <div class="page-head"><div><p class="eyebrow">COMPARAÇÃO TERRITORIAL</p><h1>Compare o voto no território</h1><p class="intro">Compare eleições, explore o território e acompanhe a participação dos candidatos.</p></div><div class="head-actions"><button class="secondary" id="preset-paes">Eduardo Paes</button><button class="secondary" id="preset-flavio">Flávio Valle</button><button class="secondary" id="open-psd" aria-expanded="false" aria-controls="psd-panel">Vereadores e deputados do PSD</button></div></div>
+      <section id="psd-panel" class="card psd-panel" aria-labelledby="psd-title" hidden>
+        <div class="psd-heading"><h2 id="psd-title">Candidaturas do PSD</h2><button class="secondary" id="close-psd">Fechar lista</button></div>
+        <p class="psd-note">Partido registrado em cada eleição. Inclui todas as candidaturas, não apenas os eleitos. Escolha em qual lado comparar.</p>
+        <div class="psd-filters"><label>Cargo<select id="psd-cargo"><option value="13">Vereador</option><option value="6">Deputado federal</option><option value="7">Deputado estadual</option></select></label><label>Ano<select id="psd-year"></select></label><label id="psd-municipality-label">Município<select id="psd-municipality"></select></label><label class="psd-search">Pesquisar candidatura<input type="search" id="psd-search" placeholder="Nome ou número…"></label></div>
+        <p id="psd-status" role="status">Carregando candidaturas…</p>
+        <div id="psd-results" class="psd-results"></div><button class="secondary" id="psd-more" hidden>Mostrar mais candidaturas</button>
+      </section>
       <details id="control-panel" class="control-panel" open><summary id="control-summary">Selecionar candidatos e eleições</summary><div class="controls card">
         <div class="comparison-input" id="controls-a"><div class="input-title"><span class="badge a">●</span> <span id="control-title-a">REFERÊNCIA</span></div><div class="form-row"><label>Ano<select id="year-a"></select></label><label>Turno<select id="turn-a"><option value="1">1º turno</option><option value="2">2º turno</option></select></label></div><label>Disputa / cargo<select id="dataset-a"></select></label><label>Pesquisar candidato<input id="search-a" type="search" placeholder="Nome ou número…"></label><label>Candidato<select id="candidate-a"></select></label></div>
         <div class="versus">→</div>

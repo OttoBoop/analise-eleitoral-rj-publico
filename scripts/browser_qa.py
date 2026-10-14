@@ -144,11 +144,57 @@ def main():
             assert page.locator('#share-b').inner_text()=='—'
             page.locator('#preset-paes').click();page.wait_for_function('atlasState.a?.votes==='+str(paes_a))
             page.locator('#year-a').select_option('2022');page.wait_for_function('atlasState.a===null');assert page.locator('#share-a').inner_text()=='—'
+            # PSD shortcuts select one election-specific candidacy at a time.
+            page.locator('#preset-paes').click();page.wait_for_function('atlasState.a?.votes==='+str(paes_a))
+            psd=json.loads((ROOT/'web/dist/data/psd-candidates.json').read_text())['candidates']
+            page.locator('#open-psd').click();page.wait_for_selector('.psd-candidate')
+            assert page.locator('#psd-year').input_value()=='2024'
+            page.locator('#psd-search').fill('marcio ribeiro')
+            councilor=next(c for c in psd if c['year']==2024 and c['cargo']=='13' and c['ue']=='60011' and c['name']=='MARCIO RIBEIRO')
+            assert page.locator('.psd-candidate').count()==1
+            page.locator('.psd-candidate [data-psd-side="a"]').click()
+            page.wait_for_function('atlasState.a?.votes==='+str(councilor['votes']))
+            assert page.evaluate('atlasState.b.votes')==paes_b
+            assert '2024' in page.evaluate('atlasState.labels.a') and 'Vereador' in page.evaluate('atlasState.labels.a')
+            _,council_data=contest(2024,'13')
+            assert abs(page.evaluate('atlasState.a.share')-100*councilor['votes']/council_data['meta']['capital_total'])<1e-9
+            assert page.locator('#candidate-a option').count()>len([c for c in council_data['candidates'] if c['party']=='PSD'])
+            page.locator('#open-psd').click();page.locator('#psd-cargo').select_option('6');page.locator('#psd-search').fill('soranz')
+            deputy=next(c for c in psd if c['year']==2026 and c['cargo']=='6' and 'SORANZ' in c['name'])
+            _,deputy_data=contest(2026,'6')
+            expected_deputy=next(c['capital_votes'] for c in deputy_data['candidates'] if c['id']==deputy['candidate'])
+            assert page.locator('#psd-municipality-label').is_hidden()
+            page.locator('.psd-candidate [data-psd-side="b"]').click()
+            page.wait_for_function('atlasState.b?.votes==='+str(expected_deputy))
+            assert page.evaluate('atlasState.a.votes')==councilor['votes']
+            page.locator('#open-psd').click();page.locator('#psd-cargo').select_option('7');page.locator('#psd-year').select_option('2022');page.locator('#psd-search').fill('claudio caiado')
+            _,state_deputy_data=contest(2022,'7')
+            state_deputy=next(c for c in state_deputy_data['candidates'] if c['party']=='PSD' and c['name']=='CLAUDIO CAIADO')
+            page.locator('.psd-candidate [data-psd-side="a"]').click();page.wait_for_function('atlasState.a?.votes==='+str(state_deputy['capital_votes']))
+            assert page.evaluate('atlasState.b.votes')==expected_deputy
+            page.locator('#open-psd').click();page.locator('#psd-cargo').select_option('13');page.locator('#psd-year').select_option('2024');page.locator('#psd-municipality').select_option('58653');page.locator('#psd-search').fill('')
+            niteroi_psd=next(c for c in psd if c['year']==2024 and c['cargo']=='13' and c['ue']=='58653')
+            page.locator('#psd-search').fill(niteroi_psd['name'])
+            page.locator('.psd-candidate [data-psd-side="a"]').first.click()
+            page.wait_for_function('atlasState.scope==="municipio" && atlasState.a?.votes==='+str(niteroi_psd['votes']))
+            assert page.locator('#municipality').input_value()=='58653'
+            page.locator('#open-psd').click();page.locator('#psd-search').fill('candidatura inexistente qqq');assert page.locator('.psd-candidate').count()==0
+            page.locator('#close-psd').click()
+            page.locator('#preset-paes').click();page.wait_for_function('atlasState.a?.votes==='+str(paes_a))
             page.locator('.nav[data-view="metodologia"]').click();page.wait_for_function('document.querySelector("#source-table tbody").children.length>10')
             mobile=browser.new_page(viewport={'width':390,'height':844});mobile.on('pageerror',lambda e:errors.append(str(e)))
             mobile.goto(url,wait_until='domcontentloaded');mobile.wait_for_function('window.atlasState?.b',timeout=120000)
             assert not mobile.locator('#control-panel').get_attribute('open')
             assert mobile.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            assert mobile.locator('#open-psd').is_visible()
+            mobile.locator('#open-psd').click();mobile.wait_for_selector('.psd-candidate')
+            mobile.locator('#psd-search').fill('marcio ribeiro')
+            assert mobile.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            mobile.screenshot(path=str(OUT/'psd-mobile.png'),full_page=True)
+            mobile.locator('.psd-candidate [data-psd-side="a"]').click()
+            mobile.wait_for_function('atlasState.a?.votes==='+str(councilor['votes']))
+            assert mobile.evaluate('atlasState.b.votes')==paes_b
+            mobile.locator('#preset-paes').click();mobile.wait_for_function('atlasState.a?.votes==='+str(paes_a))
             mobile.locator('#tab-b').click();mobile.wait_for_function('document.querySelector(".map-card.mobile-active").dataset.map==="b"')
             mobile.locator('#tab-d').click();mobile.wait_for_function('document.querySelector(".map-card.mobile-active").dataset.map==="d"')
             mobile.wait_for_timeout(300)
@@ -166,7 +212,7 @@ def main():
                 assert sum(1 for r,g,b in pixels if (b-r>25 or r-b>25) and max(r,g,b)-min(r,g,b)>40)>100,'PNG map panel lacks colored polygons'
             assert mobile.evaluate('document.documentElement.scrollWidth<=innerWidth')
             assert not errors,errors
-            (OUT/'report.json').write_text(json.dumps({'passed':True,'url':url,'browser_errors':errors,'rows':len(initial['rows']),'scenarios':['colors','exports','synchronization','viewport','Ramagem','Flavio','Niteroi','metro','absence','mobile-tabs','Pages-prefix','Petropolis-municipal','second-turn-2020','unavailable-turn-2024','linked-highlights','mobile-PNG-polygons']},indent=2))
+            (OUT/'report.json').write_text(json.dumps({'passed':True,'url':url,'browser_errors':errors,'rows':len(initial['rows']),'scenarios':['colors','exports','synchronization','viewport','Ramagem','Flavio','Niteroi','metro','absence','mobile-tabs','Pages-prefix','Petropolis-municipal','second-turn-2020','unavailable-turn-2024','linked-highlights','mobile-PNG-polygons','PSD-vereador','PSD-federal','PSD-estadual','PSD-Niteroi','PSD-mobile','PSD-all-party-denominator']},indent=2))
             browser.close()
     finally:
         if server:server.shutdown();server.server_close()
