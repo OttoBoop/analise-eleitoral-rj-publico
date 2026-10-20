@@ -11,10 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_REPOSITORY = 'OttoBoop/analise-eleitoral-rj-publico'
 SCRIPTS = ['fetch_sources.py','fetch_geography.py','fetch_metro_geography.py','pipeline.py',
            'build_temporal_audit.py','build_site.py','browser_qa.py','update.py','prepare_publication.py','audit_neighborhoods.py',
-           'audit_geographic_evidence.py','browser_matrix_qa.py']
+           'audit_geographic_evidence.py','browser_matrix_qa.py','build_rankings.py']
 MANIFESTS = ['sources.json','vendors.json','headers.json','headers-partido.json',
              'coleta-validacao.json','validation.json','zone-comparisons.csv','paes-neighborhood-audit.json',
              'geographic-evidence.json','zone-geometry-attempts.json']
+# Campaign analysis configuration stays private (key bairros of the dobradas).
+PRIVATE_FILES = {'data/reference/dobradas.json'}
 FORBIDDEN = {'docs','prompts','planos','raw','processed','.git','.openai','__pycache__',
              '.pytest_cache','.venv','outputs','logs'}
 
@@ -37,7 +39,7 @@ def public_files(root=ROOT):
     items += [(root/'data/review'/n,Path('data/review')/n) for n in ['correcoes_locais.csv','zonas_verificadas.csv','bairros_capital_evidencias.csv',
                'locais_fontes_conferidas.csv']]
     items += [(p,p.relative_to(root)) for p in sorted((root/'data/review').glob('transferencias_confirmadas_*.csv'))]
-    return [(p,r) for p,r in items if p.exists()]
+    return [(p,r) for p,r in items if p.exists() and r.as_posix() not in PRIVATE_FILES]
 
 
 def sanitize(value):

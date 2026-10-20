@@ -140,7 +140,7 @@ def main():
             for excel,csv_record in zip(sheet[1:],exported):
                 assert excel[0]==csv_record['Território']
                 for cell,(key,text_value) in zip(excel[1:],list(csv_record.items())[1:]):
-                    if key.startswith(('Situação','Evidência')):
+                    if key.startswith(('Situação','Evidência','1º colocado')):
                         assert (cell or '')==text_value
                         continue
                     expected=float(text_value) if text_value else None
@@ -213,7 +213,7 @@ def main():
             assert page.evaluate('(id)=>atlasFeatureLayers.a.get(id).options.fillColor===atlasFeatureLayers.b.get(id).options.fillColor',shared_id)
             page.evaluate('(id)=>{atlasFeatureLayers.b.get(id).openPopup();}',shared_id)
             assert 'RAMAGEM' in page.locator('#map-b .leaflet-popup-content').inner_text()
-            assert 'EDUARDO PAES' not in page.locator('#map-b .leaflet-popup-content').inner_text()
+            assert 'EDUARDO PAES · ' not in page.locator('#map-b .leaflet-popup-content').inner_text()  # stale candidacy label; the bairro leader line may name Paes
             page.evaluate('()=>{atlasMaps.b.closePopup();}')
             with page.expect_download() as info:page.locator('#download-geo').click()
             info.value.save_as(OUT/'empate-ramagem.geojson')
@@ -223,6 +223,15 @@ def main():
             page.locator('#preset-flavio').click();page.wait_for_function('atlasState.labels.a.includes("FLÁVIO") || atlasState.labels.a.includes("FLAVIO")')
             page.wait_for_function('atlasState.labels.b.includes("2026") && atlasState.a && atlasState.b')
             assert any(0<abs(r['delta'])<.01 for r in page.evaluate('atlasState.rows') if r['delta'] is not None)
+            # Standings: Flávio 2026 in Botafogo and Leblon match the published rankings.
+            ranking=json.loads(gzip.decompress((ROOT/'web/dist/data/rankings/2026-6259-7-1-RJ.json.gz').read_bytes()))
+            rows={r['name'].split(' · ')[0]:r for r in page.evaluate('atlasState.rows')}
+            for bairro,bid in [('Botafogo','3304557:ipp:020'),('Leblon','3304557:ipp:026')]:
+                info,entry=rows[bairro]['rank_b'],ranking['bairro'][bid]
+                assert info['pos']==1+sum(k for v,k in entry['runs'] if v>rows[bairro]['b']) and info['leaderVotes']==entry['top'][0][1]
+            assert rows['Leblon']['rank_b']['isLeader'] and rows['Leblon']['rank_b']['gap']>0
+            page.locator('[data-dobrada="4"][data-dobrada-mode="growth"]').click()
+            page.wait_for_function('atlasState.labels.a.includes("LAURA") && atlasState.labels.b.includes("LAURA") && atlasState.semantics.growth')
             # Prefeitura municipality changed independently, and paired municipalities have no difference.
             niteroi,_=contest(2024,'11','58653')
             page.locator('#preset-paes').click();page.wait_for_function('atlasState.a?.votes==='+str(paes_a))

@@ -6,6 +6,7 @@ import gzip
 import json
 import shutil
 import requests
+import build_rankings
 from shapely.geometry import shape, mapping
 from shapely.ops import unary_union
 
@@ -96,6 +97,8 @@ def main():
                     'geometry': mapping(unary_union([shape(f['geometry']) for f in items]).simplify(0.00015, preserve_topology=True))}
                     for key, items in sorted(groups.items())]}
     (dist / 'data/regiao-capital-separada.geojson').write_text(json.dumps(regions, ensure_ascii=False, separators=(',', ':'))+'\n')
+    # Standings per bairro/município, derived from the shards without changing them.
+    build_rankings.main()
     (ROOT / "data/manifests/vendors.json").write_text(json.dumps(manifest, indent=2))
     manifest_path = ROOT / "web/.openai/hosting.json"
     if manifest_path.exists():
