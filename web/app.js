@@ -281,6 +281,7 @@ const DOBRADAS=[
   {name:'RENAN FERREIRINHA',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2022,cargo:'6',ue:'RJ'}},
   {name:'AUREO RIBEIRO',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2022,cargo:'6',ue:'RJ'}},
   {name:'LAURA CARNEIRO',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2022,cargo:'6',ue:'RJ'}},
+  {name:'HUGO LEAL',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2022,cargo:'6',ue:'RJ'}},
   {name:'PEDRO DUARTE',now:{year:2026,cargo:'7',ue:'RJ'},ref:{year:2024,cargo:'13',ue:'60011',role:'vereador'}}];
 async function findCandidacy(spec,name){const dataset=allDatasets.find(d=>d.year===spec.year&&d.cargo===spec.cargo&&d.turno==='1'&&d.ue===spec.ue);if(!dataset)return null;const data=await json(dataset.file),c=data.candidates.find(c=>norm(c.name)===norm(name));return c?{...c,year:spec.year,cargo:spec.cargo,ue:spec.ue,candidate:c.id,cargo_name:dataset.cargo_name,role:spec.role}:null;}
 async function initDobradas(){
