@@ -276,17 +276,17 @@ async function initRivals(){
   });
 }
 const DOBRADAS=[
-  {name:'TAINÁ DE PAULA',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2024,cargo:'13',ue:'60011'}},
+  {name:'TAINÁ DE PAULA',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2024,cargo:'13',ue:'60011',role:'vereadora'}},
   {name:'DANIEL SORANZ',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2022,cargo:'6',ue:'RJ'}},
   {name:'RENAN FERREIRINHA',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2022,cargo:'6',ue:'RJ'}},
   {name:'AUREO RIBEIRO',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2022,cargo:'6',ue:'RJ'}},
   {name:'LAURA CARNEIRO',now:{year:2026,cargo:'6',ue:'RJ'},ref:{year:2022,cargo:'6',ue:'RJ'}},
-  {name:'PEDRO DUARTE',now:{year:2026,cargo:'7',ue:'RJ'},ref:{year:2024,cargo:'13',ue:'60011'}}];
-async function findCandidacy(spec,name){const dataset=allDatasets.find(d=>d.year===spec.year&&d.cargo===spec.cargo&&d.turno==='1'&&d.ue===spec.ue);if(!dataset)return null;const data=await json(dataset.file),c=data.candidates.find(c=>norm(c.name)===norm(name));return c?{...c,year:spec.year,cargo:spec.cargo,ue:spec.ue,candidate:c.id,cargo_name:dataset.cargo_name}:null;}
+  {name:'PEDRO DUARTE',now:{year:2026,cargo:'7',ue:'RJ'},ref:{year:2024,cargo:'13',ue:'60011',role:'vereador'}}];
+async function findCandidacy(spec,name){const dataset=allDatasets.find(d=>d.year===spec.year&&d.cargo===spec.cargo&&d.turno==='1'&&d.ue===spec.ue);if(!dataset)return null;const data=await json(dataset.file),c=data.candidates.find(c=>norm(c.name)===norm(name));return c?{...c,year:spec.year,cargo:spec.cargo,ue:spec.ue,candidate:c.id,cargo_name:dataset.cargo_name,role:spec.role}:null;}
 async function initDobradas(){
   const flavio=await findCandidacy({year:2026,cargo:'7',ue:'RJ'},'FLAVIO VALLE');
   const pairs=await Promise.all(DOBRADAS.map(async d=>({now:await findCandidacy(d.now,d.name),ref:await findCandidacy(d.ref,d.name)})));
-  const short=c=>c.cargo==='13'?'vereador(a)':c.cargo==='6'?'dep. federal':'dep. estadual';
+  const short=c=>c.role||(c.cargo==='6'?'dep. federal':'dep. estadual');
   $('dobradas-results').innerHTML=pairs.map((p,i)=>{const c=p.now;if(!c||!flavio)return '';const same=c.cargo==='7';return `<article class="card dobrada-card"><p class="rival-election">${same?'DEPUTADO ESTADUAL · MESMA DISPUTA':'DEPUTADO FEDERAL'} · 2026</p><h3>${esc(c.name)}</h3><p class="rivals-note">${esc(c.party)} · Nº ${esc(c.number)} · ${fmt(c.capital_votes)} votos na capital${p.ref?` · ${p.ref.year} (${short(p.ref)}): ${fmt(p.ref.capital_votes)}`:''}</p><div class="rival-actions"><button class="secondary" data-dobrada="${i}" data-dobrada-mode="pair" aria-label="Comparar Flávio Valle e ${esc(c.name)} em 2026">Flávio × ${esc(c.name.split(' ')[0])}</button>${p.ref?`<button class="secondary" data-dobrada="${i}" data-dobrada-mode="growth" aria-label="Crescimento de ${esc(c.name)} de ${p.ref.year} a 2026">${p.ref.year} → 2026</button>`:''}</div></article>`;}).join('');
   $('dobradas-status').textContent=!flavio||pairs.some(p=>!p.now)?'Algumas candidaturas estão indisponíveis nesta versão dos dados.':'';
   $('dobradas-results').addEventListener('click',async event=>{
